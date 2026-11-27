@@ -59,7 +59,7 @@ struct McpToolsFile {
     budget_tokens: Option<usize>,
 }
 
-/// `[session]` block: session startup and lifecycle preferences.
+/// `[session]` block: session startup, main-agent step cap, and lifecycle preferences.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[expect(
@@ -79,6 +79,9 @@ struct SessionFile {
     /// Refresh an auto-generated session title when a todo replan occurs (default `true`).
     #[serde(default = "default_true")]
     title_refresh_on_replan: bool,
+    /// Per-turn LLM + tool step cap of the main agent; `0` (default) means unlimited.
+    #[serde(default)]
+    max_steps: usize,
 }
 
 impl Default for SessionFile {
@@ -88,6 +91,7 @@ impl Default for SessionFile {
             branch_summary: false,
             auto_title: true,
             title_refresh_on_replan: true,
+            max_steps: 0,
         }
     }
 }
@@ -270,6 +274,8 @@ pub(crate) struct Config {
     pub(crate) auto_title: bool,
     /// Refresh auto-generated titles after a todo replan (`[session] title_refresh_on_replan`).
     pub(crate) title_refresh_on_replan: bool,
+    /// Per-turn step cap of the main agent (`[session] max_steps`, `0` = unlimited).
+    pub(crate) max_steps: usize,
     /// Double-Esc action on empty editor (`[interaction] double_escape_action`).
     pub(crate) double_escape_action: hrn_tui::DoubleEscapeAction,
     /// Enable `/btw` `<inject>` rail and `Alt+I` send-once (`[interaction] btw_inject`).
@@ -547,6 +553,7 @@ impl Config {
             branch_summary: file.session.branch_summary,
             auto_title: file.session.auto_title,
             title_refresh_on_replan: file.session.title_refresh_on_replan,
+            max_steps: file.session.max_steps,
             double_escape_action,
             btw_inject: file.interaction.btw_inject,
             pinned_agents: tui.pinned_agents,

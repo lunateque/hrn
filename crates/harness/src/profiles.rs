@@ -38,7 +38,8 @@ pub struct SubagentProfile {
     pub tools: Vec<String>,
     /// Tools always withheld from this subagent.
     pub deny_tools: Vec<String>,
-    /// Optional per-turn step budget override.
+    /// Optional per-turn step budget override from profile front matter; when unset the limit
+    /// comes from `[task.agent_max_steps]` / `[task.max_steps]` (see [`crate::TaskConfig::max_steps_for`]).
     pub max_steps: Option<usize>,
     /// Optional child-agent allowlist (`None` = unrestricted beyond depth/read-only,
     /// `Some([])` = forbid all nested spawns, `Some(["*"])` = allow all non-self children).
@@ -66,9 +67,11 @@ struct BuiltinSpec {
     read_only: bool,
     model: Option<&'static str>,
     thinking: Option<ThinkingLevel>,
-    max_steps: Option<usize>,
 }
 
+/// Built-in subagent profiles. They carry no step budget of their own:
+/// `[task.agent_max_steps]` (falling back to `[task.max_steps]`) is the single place that sizes
+/// them, so the limits stay user-configurable.
 const BUILTIN_PROFILES: &[BuiltinSpec] = &[
     BuiltinSpec {
         name: "scout",
@@ -78,7 +81,6 @@ const BUILTIN_PROFILES: &[BuiltinSpec] = &[
         read_only: true,
         model: Some("fast"),
         thinking: Some(ThinkingLevel::Low),
-        max_steps: Some(25),
     },
     BuiltinSpec {
         name: "task",
@@ -88,7 +90,6 @@ const BUILTIN_PROFILES: &[BuiltinSpec] = &[
         read_only: false,
         model: None,
         thinking: None,
-        max_steps: Some(40),
     },
     BuiltinSpec {
         name: "sonic",
@@ -98,7 +99,6 @@ const BUILTIN_PROFILES: &[BuiltinSpec] = &[
         read_only: false,
         model: Some("fast"),
         thinking: Some(ThinkingLevel::Low),
-        max_steps: Some(15),
     },
     BuiltinSpec {
         name: "plan",
@@ -108,7 +108,6 @@ const BUILTIN_PROFILES: &[BuiltinSpec] = &[
         read_only: true,
         model: Some("plan"),
         thinking: Some(ThinkingLevel::High),
-        max_steps: Some(30),
     },
     BuiltinSpec {
         name: "reviewer",
@@ -118,7 +117,6 @@ const BUILTIN_PROFILES: &[BuiltinSpec] = &[
         read_only: true,
         model: Some("reviewer"),
         thinking: Some(ThinkingLevel::High),
-        max_steps: Some(25),
     },
     BuiltinSpec {
         name: "security-reviewer",
@@ -128,7 +126,6 @@ const BUILTIN_PROFILES: &[BuiltinSpec] = &[
         read_only: true,
         model: Some("reviewer"),
         thinking: Some(ThinkingLevel::High),
-        max_steps: Some(25),
     },
 ];
 
@@ -150,7 +147,7 @@ pub fn default_subagent_profiles() -> BTreeMap<String, SubagentProfile> {
                     thinking: spec.thinking,
                     tools: Vec::new(),
                     deny_tools: Vec::new(),
-                    max_steps: spec.max_steps,
+                    max_steps: None,
                     spawns: None,
                     output: None,
                     blocking: false,

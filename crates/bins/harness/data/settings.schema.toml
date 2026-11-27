@@ -156,6 +156,13 @@ default = true
 description = "Refresh an auto-generated session title when a todo replan changes the task plan."
 
 [[settings]]
+key = "session.max_steps"
+type = "integer"
+tab = "session"
+default = 0
+description = "Per-turn LLM + tool step cap of the main agent (0 = unlimited). Subagent budgets live under `[task]`."
+
+[[settings]]
 key = "gc.retain_days"
 type = "integer"
 tab = "gc"
@@ -956,6 +963,13 @@ default = 200
 description = "Soft LLM request budget per subagent run (1.5x enforces a hard stop; 0 disables)."
 
 [[settings]]
+key = "task.max_steps"
+type = "integer"
+tab = "task"
+default = 150
+description = "Per-turn step budget of a subagent whose profile and `task.agent_max_steps` entry have no own limit (0 = unlimited)."
+
+[[settings]]
 key = "task.max_runtime_ms"
 type = "integer"
 tab = "task"
@@ -1018,6 +1032,13 @@ type = "table"
 tab = "task"
 default = {}
 description = "Per-agent model selector overrides (`[task.agent_models] <agent> = \"<selector>\"`)."
+
+[[settings]]
+key = "task.agent_max_steps"
+type = "table"
+tab = "task"
+default = { scout = 100, sonic = 60, task = 200, plan = 120, reviewer = 100, security-reviewer = 100 }
+description = "Per-agent step budgets (`[task.agent_max_steps] <agent> = <n>`, 0 = unlimited); missing agents use `task.max_steps`."
 
 [[settings]]
 key = "task.structured"

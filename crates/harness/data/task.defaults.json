@@ -2,6 +2,7 @@
   "max_concurrency": 32,
   "max_recursion_depth": 2,
   "soft_request_budget": 200,
+  "max_steps": 150,
   "max_runtime_ms": 0,
   "agent_idle_ttl_ms": 420000,
   "async": true,
@@ -11,6 +12,14 @@
   "per_call_model": "off",
   "per_call_model_allow": [],
   "agent_models": {},
+  "agent_max_steps": {
+    "scout": 100,
+    "sonic": 60,
+    "task": 200,
+    "plan": 120,
+    "reviewer": 100,
+    "security-reviewer": 100
+  },
   "structured": false,
   "isolation": {
     "enabled": false,
