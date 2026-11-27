@@ -1,0 +1,19 @@
+# Standard model roles (omp set + hrn extras).
+# Each line is `<role> [fallback1 fallback2 ...]`: an unconfigured role resolves
+# to the first configured fallback on its line, else to `default`.
+default
+smol fast
+slow
+vision
+plan
+commit smol fast
+task
+tiny smol fast
+memory tiny smol fast
+advisor slow
+title tiny smol fast
+fast smol
+reviewer
+designer
+find smol fast
+judge smol fast

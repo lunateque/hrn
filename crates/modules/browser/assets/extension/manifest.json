@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "hrn Browser Relay",
+  "version": "0.1.1",
+  "description": "Bridges Chrome tabs over Chrome Native Messaging to the local hrn agent relay.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxCQGzb3HwNwGypDgo+C8JHoCe6LCFv0RGUtOeNr7eEUiLxjb20iveWMbu1bQSZwR+VvUQIxel5+NqTqszI0s+kVj03DUt+QK6+EG/wfWeIeLwcRgEubSjr1kuXGhLgrz1GLOtkYcGW5Zh7LO+yNVO6FCmzmaCgj0Eb4eRvMmT9xLcug1ioUiL8kqMBva1FXPa3Aizh5nzgQw5Y3JrSIDnAyHE2C5/jr4KLIw5aPXDhOHhWtHiFEKRYjcsyjs0G4UzK4hjeb9dyGUSE+waHyF75bLkyk+VcbGi0zEdTI7t3hy4gLaOQQX+eeiaQLUHjSrAk5Chxs6I3ua3PNnKEV37QIDAQAB",
+  "permissions": [
+    "alarms",
+    "debugger",
+    "nativeMessaging",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

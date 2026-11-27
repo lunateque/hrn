@@ -1,0 +1,45 @@
+# titanium: the dark theme, muted. Greys and off-white carry the text; colour is kept for the
+# status band and the active selection (`focus`, `selected_bg`), errors and diff +/-.
+# Every token is required here; a user theme only lists what it changes (see `base`).
+
+[colors]
+# Emphasis in the transcript: card borders and icons, list bullets, prompt keys.
+accent = "#b4bcc8"
+# The status band's highlights and the active selection.
+focus = "#5aaee6"
+selected_bg = "#24455c"
+border = "#2a3038"
+border_muted = "#1f252d"
+# Diff +/-, state marks and git state.
+success = "#6dbf8b"
+error = "#e5545f"
+warning = "#d6a54a"
+# Secondary and tertiary text: thinking, tool output, hints, line numbers.
+muted = "#9ca3b0"
+dim = "#6b7280"
+text = "#e8ecf4"
+# The user message, tool card and status band background; a failed tool card's background.
+surface = "#12161b"
+# Labels, tips, cost.
+gold = "#b3a78c"
+accent_dim = "#7a8594"
+# Table headers.
+yellow = "#d8dce4"
+link_url = "#6b7f94"
+
+# Markdown.
+heading = "#e8ecf4"
+inline_code = "#a3c4ab"
+link = "#8fb4d4"
+
+# Syntax highlighting.
+comment = "#6b7280"
+keyword = "#9fb3cf"
+function = "#b4c7b0"
+variable = "#d6dae2"
+string = "#b3a78c"
+number = "#c2a584"
+type = "#a4b9c9"
+operator = "#8a93a1"
+punctuation = "#8a93a1"
+

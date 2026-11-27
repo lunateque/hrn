@@ -1,0 +1,170 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/kernel",
+    "crates/harness",
+    "crates/edge/dap",
+    "crates/edge/http",
+    "crates/edge/ipc",
+    "crates/edge/mcp",
+    "crates/edge/oauth",
+    "crates/edge/llm",
+    "crates/edge/proc",
+    "crates/edge/rt",
+    "crates/edge/store",
+    "crates/edge/ast",
+    "crates/edge/tools",
+    "crates/front/rpc",
+    "crates/front/tui",
+    "crates/modules/agy",
+    "crates/modules/ast",
+    "crates/modules/browser",
+    "crates/modules/checkpoint",
+    "crates/modules/debug",
+    "crates/modules/desktop",
+    "crates/modules/edit",
+    "crates/modules/eval",
+    "crates/modules/find",
+    "crates/modules/fs",
+    "crates/modules/github",
+    "crates/modules/hooks",
+    "crates/modules/lsp",
+    "crates/modules/memory",
+    "crates/modules/meta",
+    "crates/modules/shell",
+    "crates/modules/web",
+    "crates/bins/ast",
+    "crates/bins/harness",
+    "crates/bins/relay",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/lunateque/hrn"
+publish = false
+
+[workspace.dependencies]
+aes-gcm = "0.10.3"
+ast-grep-core = { version = "0.51.3", default-features = false, features = ["tree-sitter"] }
+arboard = { version = "3.4", default-features = false, features = ["image-data"] }
+base64 = "0.22"
+bytes = "1.12.1"
+clap = { version = "4.6.7", features = ["derive"] }
+clap_complete = "4.6"
+crossterm = "0.29.0"
+flate2 = "1.1.11"
+form_urlencoded = "1.2.2"
+getrandom = "0.2.17"
+globset = "0.4.21"
+grep-matcher = "0.1.9"
+grep-regex = "0.1.14"
+grep-searcher = "0.1.17"
+http = "1.5.0"
+http-body = "1.1.0"
+http-body-util = "0.1.5"
+hyper = { version = "1.12.0", features = ["client", "server", "http1", "http2"] }
+hyper-util = { version = "0.1.21", features = ["tokio", "client-legacy", "http1", "http2", "server-auto"] }
+ignore = "0.4.34"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp"] }
+percent-encoding = "2.3.2"
+portable-pty = "0.9.0"
+tree-sitter-bash = "0.25.1"
+tree-sitter-go = "0.25.0"
+tree-sitter-javascript = "0.25.0"
+tree-sitter-json = "0.24.8"
+tree-sitter-python = "0.25.0"
+tree-sitter-rust = "0.24.2"
+tree-sitter-typescript = "0.23.2"
+process-wrap = { version = "11.0.0", default-features = false, features = ["tokio1", "creation-flags", "kill-on-drop", "process-group"] }
+pulldown-cmark = { version = "0.13.6", default-features = false }
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "layout-cache", "underline-color"] }
+rusqlite = { version = "0.43.0", features = ["bundled"] }
+rustls = { version = "0.23.38", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = "0.7.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.10"
+similar = "3.2.1"
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-rustls = { version = "0.26.4", default-features = false, features = ["ring", "tls12"] }
+toml = "1.2.1"
+toml_edit = "0.25.20"
+unicode-width = "0.2.2"
+win32job = "2.1.0"
+
+hrn-kernel = { path = "crates/kernel" }
+hrn-edge-dap = { path = "crates/edge/dap" }
+hrn-edge-http = { path = "crates/edge/http" }
+hrn-edge-ipc = { path = "crates/edge/ipc" }
+hrn-edge-mcp = { path = "crates/edge/mcp" }
+hrn-edge-oauth = { path = "crates/edge/oauth" }
+hrn-edge-llm = { path = "crates/edge/llm" }
+hrn-edge-proc = { path = "crates/edge/proc" }
+hrn-edge-rt = { path = "crates/edge/rt" }
+hrn-edge-ast = { path = "crates/edge/ast" }
+hrn-edge-store = { path = "crates/edge/store" }
+hrn-edge-tools = { path = "crates/edge/tools" }
+hrn-harness = { path = "crates/harness" }
+hrn-rpc = { path = "crates/front/rpc" }
+hrn-tui = { path = "crates/front/tui" }
+hrn-mod-agy = { path = "crates/modules/agy" }
+hrn-mod-ast = { path = "crates/modules/ast" }
+hrn-mod-browser = { path = "crates/modules/browser" }
+hrn-mod-checkpoint = { path = "crates/modules/checkpoint" }
+hrn-mod-debug = { path = "crates/modules/debug" }
+hrn-mod-desktop = { path = "crates/modules/desktop" }
+hrn-mod-edit = { path = "crates/modules/edit" }
+hrn-mod-eval = { path = "crates/modules/eval" }
+hrn-mod-find = { path = "crates/modules/find" }
+hrn-mod-fs = { path = "crates/modules/fs" }
+hrn-mod-github = { path = "crates/modules/github" }
+hrn-mod-hooks = { path = "crates/modules/hooks" }
+hrn-mod-lsp = { path = "crates/modules/lsp" }
+hrn-mod-memory = { path = "crates/modules/memory" }
+hrn-mod-meta = { path = "crates/modules/meta" }
+hrn-mod-shell = { path = "crates/modules/shell" }
+hrn-mod-web = { path = "crates/modules/web" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+missing_docs = "warn"
+
+[profile.release]
+strip = "symbols"
+# Startup is dominated by the antivirus scan of the exe at launch (~5.4 ms per MB on Windows
+# Defender), so release favours size: fat LTO, opt-level "s", no unwinding tables.
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+opt-level = "s"
+
+# Byte-scanning hot loops stay at full speed.
+[profile.release.package.memchr]
+opt-level = 3
+[profile.release.package.aho-corasick]
+opt-level = 3
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+must_use_candidate = "allow"
+return_self_not_must_use = "allow"
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+assert_is_empty = "allow"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+indexing_slicing = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"

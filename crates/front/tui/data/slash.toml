@@ -1,0 +1,372 @@
+# hrn built-in slash commands — compiled in.
+#
+# Each `[[command]]` row declares one built-in slash command backed by a
+# `slash::Command` variant in `crates/front/tui/src/slash.rs`.
+# Fields:
+#   name        (required) primary slash name without leading `/`
+#   aliases     (optional) alternate slash names resolving to the same command
+#   args        (optional) argument synopsis shown in the completion popup
+#   subcommands (optional) static first-argument completions
+#   hint        (optional) inline hint shown beside argument/subcommand choices
+#   help        (required) one-line description shown in the completion popup
+
+[[command]]
+name = "login"
+args = "[provider]"
+hint = "provider, provider <api-key>, or redirect URL"
+help = "log in to a subscription or configure provider API keys"
+
+[[command]]
+name = "logout"
+args = "[provider]"
+hint = "provider name"
+help = "remove stored credentials for a provider"
+
+[[command]]
+name = "setup"
+help = "first-run onboarding wizard (login, default role, theme)"
+
+[[command]]
+name = "auth"
+help = "show provider auth status"
+
+[[command]]
+name = "model"
+args = "[alias]"
+hint = "model alias"
+help = "open the roles/models hub or switch model"
+
+[[command]]
+name = "switch"
+args = "[model]"
+hint = "model alias"
+help = "temporarily switch the session model without touching roles"
+
+[[command]]
+name = "think"
+args = "<level>"
+hint = "thinking effort"
+help = "set the thinking effort"
+
+[[command]]
+name = "fast"
+args = "[ultra|off]"
+subcommands = ["ultra", "off"]
+hint = "service tier"
+help = "toggle priority service tier (or /fast ultra)"
+
+[[command]]
+name = "slow"
+args = "[on|off]"
+subcommands = ["on", "off"]
+hint = "slow mode"
+help = "toggle Anthropic subscription slow-mode lane"
+
+[[command]]
+name = "extended-context"
+args = "[on|off|status]"
+subcommands = ["on", "off", "status"]
+hint = "extended context"
+help = "toggle extended context window (max_context_window)"
+
+[[command]]
+name = "mode"
+args = "<mode>"
+hint = "permission mode"
+help = "set the permission mode"
+
+[[command]]
+name = "forget-approvals"
+help = "clear remembered and session approval grants"
+
+[[command]]
+name = "plan"
+args = "[on|off|<prompt>]"
+subcommands = ["on", "off"]
+hint = "plan mode"
+help = "toggle read-only plan mode"
+
+[[command]]
+name = "advisor"
+args = "[on|off|model <alias>]"
+subcommands = ["on", "off", "model"]
+hint = "advisor reviewer"
+help = "toggle passive post-turn reviewer"
+
+[[command]]
+name = "attach"
+args = "<path>"
+hint = "path to an image file"
+help = "attach an image file ([Image #N])"
+
+[[command]]
+name = "image"
+args = "<N>"
+hint = "image attachment number"
+help = "open larger preview for [Image #N]"
+
+[[command]]
+name = "tree"
+help = "browse and branch session history"
+
+[[command]]
+name = "branch"
+aliases = ["rewind"]
+help = "rewind or branch from a user turn (last 600 nodes)"
+
+[[command]]
+name = "fork"
+args = "[node]"
+hint = "optional node id"
+help = "fork the session from head or a node"
+
+[[command]]
+name = "new"
+aliases = ["clear"]
+help = "start a new session"
+
+[[command]]
+name = "sessions"
+aliases = ["resume"]
+help = "pick a session to resume"
+
+[[command]]
+name = "compact"
+args = "[instructions]"
+hint = "optional compaction instructions"
+help = "fold older history into a summary"
+
+[[command]]
+name = "shake"
+help = "elide large old tool outputs to local:// without an LLM call"
+
+[[command]]
+name = "handoff"
+args = "[focus]"
+hint = "optional handoff focus"
+help = "write a structured handoff summary for a fresh context"
+
+[[command]]
+name = "btw"
+args = "[question]"
+hint = "side question (bare opens history)"
+help = "ask a tool-free side question without touching session history"
+
+[[command]]
+name = "export"
+args = "[path]"
+hint = "output .md or .html path"
+help = "write the session to markdown or html"
+
+[[command]]
+name = "share"
+args = "[--no-redact]"
+subcommands = ["--no-redact"]
+hint = "sealed share link"
+help = "seal and share the current session as an encrypted link"
+
+[[command]]
+name = "collab"
+args = "[view|status|stop]"
+subcommands = ["view", "status", "stop"]
+hint = "live collaboration"
+help = "host a live encrypted collaboration room for this session"
+
+[[command]]
+name = "join"
+args = "<link>"
+hint = "collab room link"
+help = "join a live collaboration room as a guest"
+
+[[command]]
+name = "leave"
+help = "leave the active collaboration room"
+
+[[command]]
+name = "goal"
+args = "[objective|pause|resume|drop]"
+subcommands = ["pause", "resume", "drop"]
+hint = "goal mode"
+help = "goal mode: work autonomously until done"
+
+[[command]]
+name = "modelpreset"
+args = "[save <n>|switch <n>|delete <n>|list]"
+subcommands = ["save", "switch", "delete", "list"]
+hint = "model preset"
+help = "named model-role bundles"
+
+[[command]]
+name = "stats"
+help = "view usage statistics"
+
+[[command]]
+name = "settings"
+help = "show the effective configuration"
+
+[[command]]
+name = "context"
+help = "break down the context window"
+
+[[command]]
+name = "tools"
+help = "list the session's tools"
+
+[[command]]
+name = "mcp"
+args = "[resources]"
+subcommands = ["resources"]
+hint = "MCP view"
+help = "list MCP servers or advertised resources (/mcp resources)"
+
+[[command]]
+name = "jobs"
+help = "list background jobs (proc://)"
+
+[[command]]
+name = "todo"
+args = "[edit]"
+subcommands = ["edit"]
+hint = "todo list"
+help = "show or edit the session's todo list"
+
+[[command]]
+name = "pin"
+args = "[session]"
+hint = "session id"
+help = "pin a session in /sessions"
+
+[[command]]
+name = "unpin"
+args = "[session]"
+hint = "session id"
+help = "unpin a session"
+
+[[command]]
+name = "delete"
+args = "[session]"
+hint = "session id"
+help = "delete a stored session"
+
+[[command]]
+name = "rename"
+args = "[title]"
+hint = "new session title (omit to regenerate)"
+help = "title the current session or regenerate it with the title model"
+
+[[command]]
+name = "retry"
+help = "replay the last turn (F5)"
+
+[[command]]
+name = "copy"
+help = "copy the last answer to the clipboard"
+
+[[command]]
+name = "hotkeys"
+aliases = ["keybindings"]
+help = "show the key bindings"
+
+[[command]]
+name = "usage"
+help = "show provider usage and limits"
+
+[[command]]
+name = "help"
+help = "keys and commands"
+
+[[command]]
+name = "quit"
+aliases = ["exit"]
+help = "exit"
+
+[[command]]
+name = "agents"
+help = "open the agent definitions hub (enable/disable and model overrides)"
+
+[[command]]
+name = "theme"
+args = "[name] [save]"
+hint = "theme name (append `save` to persist)"
+help = "list themes, preview a theme live, or persist it with `save`"
+
+[[command]]
+name = "queue"
+args = "[message]"
+hint = "message to enqueue (omit to list)"
+help = "queue a prompt for after the current turn (bare lists the queue)"
+
+[[command]]
+name = "loop"
+args = "[count|duration] [--while|--until '<cmd>'] [prompt]"
+hint = "loop bounds, condition, or prompt"
+help = "Loop: off · repeat a prompt across turns (Esc pauses, /loop stops)"
+
+[[command]]
+name = "wt"
+aliases = ["worktree"]
+args = "[branch]"
+hint = "optional branch name"
+help = "create a git worktree carrying uncommitted changes and relocate the session"
+
+[[command]]
+name = "memory"
+args = "[view|stats|search|enqueue|clear] [arg]"
+subcommands = ["view", "stats", "search", "enqueue", "clear"]
+hint = "memory action"
+help = "inspect, search, enqueue, or clear cross-session memory"
+
+[[command]]
+name = "init"
+help = "inspect the repository and generate or refresh AGENTS.md"
+
+[[command]]
+name = "trace"
+args = "[export <file>]"
+subcommands = ["export"]
+hint = "trace action"
+help = "show per-turn LLM and tool trace spans or export them to JSON/Markdown"
+
+[[command]]
+name = "dump"
+args = "[file]"
+hint = "optional output file (omit to copy to clipboard)"
+help = "dump the plain-text session transcript to the clipboard or a file"
+
+[[command]]
+name = "commit"
+help = "stage and commit only this session's attributed edits"
+
+[[command]]
+name = "git"
+args = "[revision]"
+hint = "optional git revision to inspect"
+help = "open interactive git status, diff, staging, and commit workbench"
+
+[[command]]
+name = "remote"
+args = "[view|lan|relay|status|stop]"
+subcommands = ["view", "lan", "relay", "status", "stop"]
+hint = "remote pairing mode"
+help = "pair a phone or browser via QR code (HTTPS tunnel by default, or `lan`)"
+
+[[command]]
+name = "review"
+args = "[staged|base|<focus>]"
+subcommands = ["staged", "base"]
+hint = "review target or focus"
+help = "run a structured P0-P3 code review of current changes"
+
+[[command]]
+name = "vibe"
+args = "[on|off|status]"
+subcommands = ["on", "off", "status"]
+hint = "vibe mode"
+help = "toggle low-friction auto-edit coding mode"
+
+[[command]]
+name = "agy"
+args = "[status|[--model M] [--effort E] [--mode MODE] [--worktree] <prompt>]"
+subcommands = ["status"]
+hint = "agy CLI status or prompt"
+help = "check agy CLI status or run a prompt via the official agy binary"

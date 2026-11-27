@@ -1,0 +1,37 @@
+# Critical shell command rules that force an interactive approval prompt with an explicit
+# reason even in `write` (auto-edit) or `yolo` mode.
+
+[[rule]]
+id = 'rm-root'
+pattern = '(?i)(^|[\s;&|])(sudo\s+)?rm\s+((-[a-z]+\s+|--(recursive|force|no-preserve-root)\s+)*)(-[a-z]*r[a-z]*f[a-z]*|-[a-z]*f[a-z]*r[a-z]*|-[a-z]*r[a-z]*\s+-[a-z]*f[a-z]*|-[a-z]*f[a-z]*\s+-[a-z]*r[a-z]*|--recursive\s+--force|--force\s+--recursive)(\s+(--?[a-z0-9-]+))*\s+(/+($|[\s*])|~($|\s)|/+etc\b|/+usr\b|/+bin\b|/+boot\b)'
+reason = 'destructive recursive removal targeting root or a system directory'
+
+[[rule]]
+id = 'fork-bomb'
+pattern = ':\s*\(\s*\)\s*\{.*:\s*\|\s*:.*\}'
+reason = 'fork bomb pattern can exhaust system processes'
+
+[[rule]]
+id = 'fetch-pipe-shell'
+pattern = '(?i)\b(curl|wget)\b[^\n]*\|\s*(sudo\s+)?(ba|da|z|k|a)?sh\b'
+reason = 'downloading and piping a remote script directly into a shell'
+
+[[rule]]
+id = 'passwd-write'
+pattern = '(?i)(>>?|tee\b|sed\s+-i|cp\b|mv\b)[^\n]*/etc/(passwd|shadow|sudoers)\b'
+reason = 'modifying system authentication file (/etc/passwd, /etc/shadow, or /etc/sudoers)'
+
+[[rule]]
+id = 'power-control'
+pattern = '(?i)(^|[\s;&|])(sudo\s+)?(shutdown|reboot|poweroff|halt)\b'
+reason = 'system shutdown or reboot command'
+
+[[rule]]
+id = 'disk-format'
+pattern = '(?i)(^|[\s;&|])(sudo\s+)?(mkfs(\.[a-z0-9]+)?\b|format\s+[a-z]:|diskpart\b)'
+reason = 'disk or filesystem formatting command'
+
+[[rule]]
+id = 'win-del-root'
+pattern = '(?i)(^|[\s;&|])(del|erase|rmdir|rd)\s+[^\n]*(/s|/q)[^\n]*[a-z]:\\'
+reason = 'destructive recursive Windows drive deletion'

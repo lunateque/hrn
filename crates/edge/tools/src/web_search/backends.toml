@@ -1,0 +1,68 @@
+# The `web_search` backends, in default-chain order: keyed ones first (skipped without their
+# credential), keyless ones last. `[web] chain` in the user's config overrides the order.
+#
+#   name              config / display name; the backend code is chosen by it
+#   key               "required": skipped without a credential; "optional": used when set; "none"
+#   key_env           environment variables holding the credential (first non-empty wins)
+#   endpoint          request URL
+#   endpoint_env      environment variables holding a base URL that replaces `endpoint`
+#                     (the first non-empty wins) with `endpoint_path` appended
+#   endpoint_path     path appended to a base URL taken from `endpoint_env`
+#   keyless_endpoint  where the backend goes when `key` is optional and no credential is set
+
+[[backend]]
+name = "brave"
+key = "required"
+key_env = ["BRAVE_API_KEY"]
+endpoint = "https://api.search.brave.com/res/v1/web/search"
+
+[[backend]]
+name = "tavily"
+key = "required"
+key_env = ["TAVILY_API_KEY"]
+endpoint = "https://api.tavily.com/search"
+
+[[backend]]
+name = "perplexity"
+key = "required"
+key_env = ["PERPLEXITY_API_KEY"]
+endpoint = "https://api.perplexity.ai/search"
+
+[[backend]]
+name = "parallel"
+key = "required"
+key_env = ["PARALLEL_API_KEY"]
+endpoint = "https://api.parallel.ai/v1beta/search"
+
+[[backend]]
+name = "firecrawl"
+key = "required"
+key_env = ["FIRECRAWL_API_KEY"]
+endpoint = "https://api.firecrawl.dev/v2/search"
+endpoint_env = ["FIRECRAWL_BASE_URL", "FIRECRAWL_API_URL"]
+endpoint_path = "/search"
+
+[[backend]]
+name = "jina"
+key = "required"
+key_env = ["JINA_API_KEY"]
+endpoint = "https://s.jina.ai/"
+
+[[backend]]
+name = "searxng"
+key = "optional"
+key_env = ["SEARXNG_TOKEN"]
+endpoint_env = ["SEARXNG_URL", "SEARXNG_ENDPOINT"]
+endpoint_path = "/search"
+
+[[backend]]
+name = "exa"
+key = "optional"
+key_env = ["EXA_API_KEY"]
+endpoint = "https://api.exa.ai/search"
+keyless_endpoint = "https://mcp.exa.ai/mcp"
+
+[[backend]]
+name = "duckduckgo"
+key = "none"
+endpoint = "https://html.duckduckgo.com/html/"

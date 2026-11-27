@@ -1,0 +1,81 @@
+[package]
+name = "hrn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "hrn"
+path = "src/main.rs"
+
+[features]
+default = ["agy", "ast", "browser", "checkpoint", "debug", "desktop", "edit", "eval", "find", "fs", "github", "hooks", "lsp", "memory", "meta", "shell", "web"]
+agy = ["dep:hrn-mod-agy"]
+ast = ["dep:hrn-mod-ast"]
+browser = ["dep:hrn-mod-browser"]
+checkpoint = ["dep:hrn-mod-checkpoint"]
+debug = ["dep:hrn-mod-debug"]
+desktop = ["dep:hrn-mod-desktop"]
+edit = ["dep:hrn-mod-edit"]
+eval = ["dep:hrn-mod-eval"]
+find = ["dep:hrn-mod-find"]
+fs = ["dep:hrn-mod-fs"]
+github = ["dep:hrn-mod-github"]
+hooks = ["dep:hrn-mod-hooks"]
+lsp = ["dep:hrn-mod-lsp"]
+memory = ["dep:hrn-mod-memory"]
+meta = ["dep:hrn-mod-meta"]
+shell = ["dep:hrn-mod-shell"]
+web = ["dep:hrn-mod-web"]
+
+[dependencies]
+arboard.workspace = true
+base64.workspace = true
+bytes.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+crossterm.workspace = true
+flate2.workspace = true
+hrn-edge-http.workspace = true
+hrn-edge-ipc.workspace = true
+hrn-edge-llm.workspace = true
+hrn-edge-mcp.workspace = true
+hrn-edge-oauth.workspace = true
+hrn-edge-proc.workspace = true
+hrn-edge-store.workspace = true
+hrn-edge-tools.workspace = true
+hrn-harness.workspace = true
+hrn-kernel.workspace = true
+hrn-mod-agy = { workspace = true, optional = true }
+hrn-mod-ast = { workspace = true, optional = true }
+hrn-mod-browser = { workspace = true, optional = true }
+hrn-mod-checkpoint = { workspace = true, optional = true }
+hrn-mod-debug = { workspace = true, optional = true }
+hrn-mod-desktop = { workspace = true, optional = true }
+hrn-mod-edit = { workspace = true, optional = true }
+hrn-mod-eval = { workspace = true, optional = true }
+hrn-mod-find = { workspace = true, optional = true }
+hrn-mod-fs = { workspace = true, optional = true }
+hrn-mod-github = { workspace = true, optional = true }
+hrn-mod-hooks = { workspace = true, optional = true }
+hrn-mod-lsp = { workspace = true, optional = true }
+hrn-mod-memory = { workspace = true, optional = true }
+hrn-mod-meta = { workspace = true, optional = true }
+hrn-mod-shell = { workspace = true, optional = true }
+hrn-mod-web = { workspace = true, optional = true }
+hrn-rpc.workspace = true
+hrn-tui.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
+
+[dev-dependencies]
+hrn-relay = { path = "../relay" }
+ratatui.workspace = true
+
+[lints]
+workspace = true

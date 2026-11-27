@@ -1,0 +1,34 @@
+# titanium-vivid: the colourful titanium variant (cyan accent, green code, muted text).
+
+[colors]
+accent = "#00b4ff"
+focus = "#00b4ff"
+selected_bg = "#0082b3"
+border = "#2a3038"
+border_muted = "#1f252d"
+success = "#00ff88"
+error = "#ff4757"
+warning = "#ffb347"
+muted = "#9ca3b0"
+dim = "#6b7280"
+text = "#e8ecf4"
+surface = "#0f1216"
+gold = "#d4c090"
+accent_dim = "#3998bf"
+yellow = "#f0c040"
+link_url = "#0082b3"
+
+heading = "#00b4ff"
+inline_code = "#00ff88"
+link = "#00b4ff"
+
+comment = "#6b7280"
+keyword = "#00b4ff"
+function = "#00ff88"
+variable = "#e8ecf4"
+string = "#d4c090"
+number = "#ffb347"
+type = "#00b4ff"
+operator = "#00b4ff"
+punctuation = "#9ca3b0"
+

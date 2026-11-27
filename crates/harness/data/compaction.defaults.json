@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "threshold_percent": -1,
+  "threshold_tokens": -1,
+  "reserve_tokens": null,
+  "keep_recent_tokens": 20000,
+  "mid_turn_enabled": true,
+  "auto_continue": true,
+  "async_enabled": true,
+  "idle": {
+    "enabled": false,
+    "threshold_tokens": 200000,
+    "timeout_secs": 300
+  },
+  "method_order": [
+    "handoff",
+    "shake",
+    "summary"
+  ],
+  "model_thresholds": {},
+  "policy": {
+    "context_window_tokens": 200000,
+    "supersede_threshold_pct": 15,
+    "keep_recent_turns": 6,
+    "old_tool_cap_bytes": 2000,
+    "shake_protect_tokens": 40000,
+    "shake_min_savings_tokens": 20000,
+    "shake_min_elide_tokens": 50
+  }
+}

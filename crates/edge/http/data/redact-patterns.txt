@@ -1,0 +1,22 @@
+# Data-driven secret redaction patterns for sealed share snapshots.
+# Format: <LABEL><TAB><RUST_REGEX>
+# Blank lines and lines starting with `#` are ignored.
+
+ANTHROPIC_KEY	sk-ant-[A-Za-z0-9_-]{20,}
+OPENAI_KEY	sk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}
+GITHUB_TOKEN	(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}
+GITHUB_PAT	github_pat_[A-Za-z0-9_]{30,}
+AWS_ACCESS_KEY	(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[0-9A-Z]{16}
+AWS_SECRET_ASSIGN	(?i)["']?\b(?:aws_secret_access_key|aws_session_token)["']?\s*[:=]\s*["']?[A-Za-z0-9/+=]{32,}["']?
+STRIPE_KEY	(?:sk|pk|rk)_(?:live|test)_[0-9A-Za-z]{20,}
+SLACK_TOKEN	xox[baprs]-[0-9A-Za-z-]{10,}
+SLACK_WEBHOOK	https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[A-Za-z0-9]+
+GOOGLE_API_KEY	AIza[0-9A-Za-z_-]{35}
+PRIVATE_KEY	-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----
+JWT	eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}
+BEARER_TOKEN	(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{20,}
+BASIC_AUTH_HEADER	(?i)\bAuthorization\s*:\s*Basic\s+[A-Za-z0-9+/=]{8,}
+BASIC_AUTH_URL	[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:@/]+:[^\s@/]{6,}@[^\s/]+
+NPM_TOKEN	npm_[A-Za-z0-9]{30,}
+PYPI_TOKEN	pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{20,}
+GENERIC_SECRET_ASSIGN	(?i)["']?\b(?:[A-Z0-9_]*_)?(?:API_KEY|SECRET_KEY|ACCESS_TOKEN|AUTH_TOKEN|PRIVATE_TOKEN|CLIENT_SECRET|PASSWORD|PASSWD|SECRET|TOKEN)["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,}["']?

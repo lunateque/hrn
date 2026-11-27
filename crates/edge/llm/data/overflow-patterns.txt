@@ -1,0 +1,17 @@
+# Case-insensitive substrings classifying provider errors as context-window overflow
+# (omp://provider-quirks.md — groq, ollama, openai, anthropic, gemini, xai, moonshot).
+context_length_exceeded
+maximum context length
+reduce the length of the messages
+prompt is too long
+input is too long
+prompt too long
+too many tokens
+exceeds the maximum number of tokens
+token limit exceeded
+exceeds the context window
+context window exceeded
+request body too large
+input token count exceeds
+empty_length_finish
+output limit before producing any text

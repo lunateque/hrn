@@ -1,0 +1,16 @@
+# The fixture config for `cargo xtask promptstats` (a keyless built-in catalog row).
+thinking = "off"
+
+[[providers]]
+name = "fixture"
+kind = "openai_chat"
+base_url = "http://127.0.0.1:9/v1"
+api_key_env = "HRN_PROMPTSTATS_KEY"
+
+[models.flash]
+provider = "fixture"
+id = "qwen3.8-flash-next"
+context_window = 131072
+
+[roles]
+default = "flash"

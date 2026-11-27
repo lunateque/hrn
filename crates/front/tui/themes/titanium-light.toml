@@ -1,0 +1,44 @@
+# titanium-light: crisp light-mode companion to titanium. Slate ink on light surfaces;
+# colour stays restrained for the status band, active selection, errors and diff +/-.
+
+[colors]
+# Emphasis in the transcript: card borders and icons, list bullets, prompt keys.
+accent = "#4b5563"
+# The status band's highlights and the active selection.
+focus = "#0b6bcb"
+selected_bg = "#cfe3f7"
+border = "#cbd2dc"
+border_muted = "#dce2ea"
+# Diff +/-, state marks and git state.
+success = "#1f7a45"
+error = "#c62839"
+warning = "#9a6700"
+# Secondary and tertiary text: thinking, tool output, hints, line numbers.
+muted = "#4b5563"
+dim = "#6b7280"
+text = "#181d24"
+# The user message, tool card and status band background; a failed tool card's background.
+surface = "#eef1f6"
+# Labels, tips, cost.
+gold = "#7a5b1e"
+accent_dim = "#5b6b7c"
+# Table headers.
+yellow = "#2d3748"
+link_url = "#3a6591"
+
+# Markdown.
+heading = "#111827"
+inline_code = "#1d6b42"
+link = "#0b6bcb"
+
+# Syntax highlighting.
+comment = "#6b7280"
+keyword = "#2c5282"
+function = "#1f6f4a"
+variable = "#1f2937"
+string = "#7a5b1e"
+number = "#8a4b1f"
+type = "#285e61"
+operator = "#4a5568"
+punctuation = "#4a5568"
+

@@ -1,0 +1,175 @@
+# Built-in debug adapter descriptors. A `[debug.adapters.<id>]` table of the user's config file is
+# merged over the entry of the same id (tables merge, lists and scalars replace) or adds a new one.
+#
+# command         executables tried in order; the first that is found (and passes `python_module`) runs
+# args            adapter arguments; `${port}` is the loopback port of a `connect = "tcp"` adapter,
+#                 `${located}` the file found through `locate_env` / `locate_paths`
+# connect         "stdio" (default) or "tcp" (spawn a server on `${port}` and connect to it)
+# file_types      extensions that make launch pick this adapter
+# root_markers    files whose presence up the target's ancestry ranks this adapter (`*.ext` globs)
+# native_rank     adapters tried, in this order, for a target the extension does not identify
+# attach_port     preferred for `attach` with a port and no explicit adapter
+# attach_connect  `attach` host/port go into a `connect` object and `pid` is sent as `processId`
+# python_module   the chosen python must import this module
+# locate_env      environment variable naming a file; `locate_paths` are tried after it (`~` = home)
+# launch / attach default DAP arguments; `launch_for` overrides them by target kind or extension
+
+[adapters.gdb]
+command = ["gdb"]
+args = ["-i", "dap"]
+languages = ["c", "cpp", "rust"]
+file_types = [".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".rs"]
+root_markers = ["Makefile", "CMakeLists.txt", "Cargo.toml", "compile_commands.json"]
+native_rank = 0
+install_hint = "install GDB 14 or newer (it speaks DAP with `gdb -i dap`)"
+[adapters.gdb.launch]
+stopOnEntry = true
+stopAtBeginningOfMainSubprogram = true
+
+[adapters.lldb-dap]
+command = ["lldb-dap"]
+languages = ["c", "cpp", "objc", "swift", "rust", "zig"]
+file_types = [".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".swift", ".rs", ".zig"]
+root_markers = ["Package.swift", "Cargo.toml", "Makefile", "CMakeLists.txt", "build.zig"]
+native_rank = 1
+install_hint = "install LLVM (lldb-dap)"
+[adapters.lldb-dap.launch]
+stopOnEntry = true
+
+[adapters.codelldb]
+command = ["codelldb"]
+args = ["--port", "${port}"]
+connect = "tcp"
+languages = ["c", "cpp", "rust", "zig"]
+file_types = [".c", ".cc", ".cpp", ".cxx", ".rs", ".zig"]
+root_markers = ["Cargo.toml", "CMakeLists.txt", "Makefile", "compile_commands.json", "build.zig"]
+install_hint = "install the CodeLLDB adapter (`codelldb` on PATH)"
+[adapters.codelldb.launch]
+stopOnEntry = true
+
+[adapters.debugpy]
+command = ["python", "python3", "py"]
+args = ["-m", "debugpy.adapter"]
+languages = ["python"]
+file_types = [".py"]
+root_markers = ["pyproject.toml", "setup.py", "requirements.txt", "Pipfile"]
+python_module = "debugpy"
+attach_port = true
+attach_connect = true
+install_hint = "install with 'pip install debugpy'"
+[adapters.debugpy.launch]
+console = "internalConsole"
+justMyCode = true
+stopOnEntry = true
+env = { PYTHONUNBUFFERED = "1" }
+[adapters.debugpy.attach]
+justMyCode = true
+
+[adapters.dlv]
+command = ["dlv"]
+args = ["dap", "--listen", "127.0.0.1:${port}"]
+connect = "tcp"
+languages = ["go"]
+file_types = [".go"]
+root_markers = ["go.mod", "go.sum", "go.work"]
+accepts_directory = true
+install_hint = "install with 'go install github.com/go-delve/delve/cmd/dlv@latest'"
+[adapters.dlv.launch]
+mode = "debug"
+stopOnEntry = true
+[adapters.dlv.launch_for]
+directory = { mode = "debug" }
+file = { mode = "exec" }
+extension = { ".go" = { mode = "debug" } }
+[adapters.dlv.attach]
+mode = "local"
+
+[adapters.js-debug-adapter]
+command = ["node"]
+args = ["${located}", "${port}", "127.0.0.1"]
+connect = "tcp"
+languages = ["javascript", "typescript"]
+file_types = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"]
+root_markers = ["package.json", "tsconfig.json", "jsconfig.json"]
+locate_env = "JS_DEBUG_DAP_SERVER"
+locate_paths = [
+    "~/.local/share/nvim/mason/packages/js-debug-adapter/js-debug/src/dapDebugServer.js",
+    "~/AppData/Local/nvim-data/mason/packages/js-debug-adapter/js-debug/src/dapDebugServer.js",
+    "~/.local/opt/js-debug/src/dapDebugServer.js",
+]
+install_hint = "download vscode-js-debug (https://github.com/microsoft/vscode-js-debug/releases), unpack it and point JS_DEBUG_DAP_SERVER at js-debug/src/dapDebugServer.js"
+[adapters.js-debug-adapter.launch]
+type = "pwa-node"
+stopOnEntry = true
+[adapters.js-debug-adapter.attach]
+type = "pwa-node"
+
+[adapters.netcoredbg]
+command = ["netcoredbg"]
+args = ["--interpreter=vscode"]
+languages = ["csharp", "fsharp"]
+file_types = [".cs", ".csx", ".fs", ".fsx"]
+root_markers = ["*.sln", "*.csproj", "*.fsproj", "global.json"]
+install_hint = "install netcoredbg"
+[adapters.netcoredbg.launch]
+stopAtEntry = true
+
+[adapters.kotlin-debug-adapter]
+command = ["kotlin-debug-adapter"]
+languages = ["kotlin"]
+file_types = [".kt", ".kts"]
+root_markers = ["build.gradle", "build.gradle.kts", "pom.xml", "settings.gradle", "settings.gradle.kts"]
+install_hint = "install kotlin-debug-adapter"
+
+[adapters.rdbg]
+command = ["rdbg"]
+args = ["--open", "--command", "--"]
+languages = ["ruby"]
+file_types = [".rb", ".rake", ".gemspec"]
+root_markers = ["Gemfile", "Rakefile", ".ruby-version"]
+install_hint = "install with 'gem install debug'"
+[adapters.rdbg.launch]
+type = "rdbg"
+[adapters.rdbg.attach]
+type = "rdbg"
+
+[adapters.php-debug-adapter]
+command = ["php-debug-adapter"]
+languages = ["php"]
+file_types = [".php", ".phtml"]
+root_markers = ["composer.json", "composer.lock"]
+install_hint = "install php-debug-adapter"
+[adapters.php-debug-adapter.launch]
+stopOnEntry = true
+
+[adapters.bash-debug-adapter]
+command = ["bash-debug-adapter"]
+languages = ["bash", "shell"]
+file_types = [".sh", ".bash"]
+root_markers = [".git"]
+install_hint = "install bash-debug-adapter"
+[adapters.bash-debug-adapter.launch]
+type = "bashdb"
+pathBashdb = "bashdb"
+pathBash = "bash"
+
+[adapters.dart-debug-adapter]
+command = ["dart"]
+args = ["debug_adapter"]
+languages = ["dart"]
+file_types = [".dart"]
+root_markers = ["pubspec.yaml", "pubspec.lock"]
+install_hint = "install the Dart SDK"
+[adapters.dart-debug-adapter.launch]
+stopOnEntry = true
+
+[adapters.elixir-ls-debugger]
+command = ["elixir-ls-debugger"]
+languages = ["elixir"]
+file_types = [".ex", ".exs", ".heex", ".eex"]
+root_markers = ["mix.exs", "mix.lock"]
+install_hint = "install elixir-ls"
+[adapters.elixir-ls-debugger.launch]
+type = "mix_task"
+task = "run"
+stopOnEntry = true

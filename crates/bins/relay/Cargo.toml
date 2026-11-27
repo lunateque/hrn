@@ -1,0 +1,31 @@
+[package]
+name = "hrn-relay"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "hrn_relay"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hrn-relay"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+hrn-edge-ipc.workspace = true
+hrn-kernel.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+bytes.workspace = true
+hrn-edge-http.workspace = true
+http.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

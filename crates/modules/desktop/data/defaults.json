@@ -1,0 +1,7 @@
+{
+  "display": "active",
+  "max_width": 3840,
+  "max_height": 2400,
+  "background_fallback": "takeover",
+  "eval_prelude": true
+}

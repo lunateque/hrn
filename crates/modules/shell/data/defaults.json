@@ -1,0 +1,36 @@
+{
+  "shell_path": null,
+  "auto_background_secs": 60,
+  "pty_default": false,
+  "pty_idle_ms": 2000,
+  "input_wait_ms": 3000,
+  "allow_compound_commands": false,
+  "allowed_env_vars": [],
+  "patterns": [],
+  "git_guard": false,
+  "interceptor": {
+    "enabled": false,
+    "patterns": [
+      {
+        "pattern": "^cat\\s+[^|><;&]+$",
+        "tool": "read",
+        "message": "Use the `read` tool instead of `cat` to inspect files."
+      },
+      {
+        "pattern": "^(head|tail)\\s+[^|><;&]+$",
+        "tool": "read",
+        "message": "Use the `read` tool with line selectors instead of `head`/`tail`."
+      },
+      {
+        "pattern": "^(grep|rg|ripgrep)\\s+",
+        "tool": "grep",
+        "message": "Use the `grep` tool instead of running grep/rg in bash."
+      },
+      {
+        "pattern": "^find\\s+",
+        "tool": "glob",
+        "message": "Use the `glob` or `find` tool instead of running shell `find`."
+      }
+    ]
+  }
+}

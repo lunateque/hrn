@@ -1,0 +1,140 @@
+# Baseline core defaults for `hrn` (layer 1, lowest precedence).
+# Module tables (`[fs]`, `[shell]`, `[desktop]`, `[browser]`, ...) stay in their
+# own module defaults so `cargo xtask removability` never sees unclaimed tables.
+
+thinking = "medium"
+
+[llm]
+role_storage = "global"
+context_promotion = false
+extended_context = false
+allow_plaintext_http = false
+accounts = []
+
+[llm.retry]
+usage_reserve_pct = 10
+
+[llm.tier]
+openai = "none"
+anthropic = "none"
+google = "none"
+subagent = "inherit"
+
+[llm.anthropic]
+slow_mode = false
+
+[llm.kimi]
+api_format = "auto"
+
+[session]
+auto_resume = false
+branch_summary = false
+auto_title = true
+title_refresh_on_replan = true
+
+[gc]
+retain_days = 90
+retain_newest_per_cwd = 20
+retain_newest_global = 20
+vacuum_reclaim_bytes = 1048576
+
+[commit]
+enabled = true
+changelog = false
+
+[update]
+repo = "lunateque/harness"
+channel = "stable"
+
+[interaction]
+double_escape_action = "tree"
+btw_inject = false
+
+[advisor]
+enabled = false
+thinking = "low"
+max_tokens = 384
+
+[mcp_tools]
+budget_tokens = 4000
+
+[tools]
+ask_timeout_secs = 0
+premium_defer = true
+approval_mode = "yolo"
+restricted_folders = []
+
+[tui]
+notify = true
+notify_after_secs = 30
+notify_title = "hrn"
+pinned_agents = "collapsed"
+subagent_live_preview = true
+mouse = false
+symbol_preset = "unicode"
+color_blind_mode = false
+vim_mode = false
+vim_mode_display = "text"
+recall_cleared_drafts = true
+hide_thinking = false
+
+[tui.theme]
+dark = "titanium"
+light = "titanium-light"
+current = "auto"
+
+[tui.statusline]
+preset = "default"
+separator = "powerline"
+left_segments = []
+right_segments = []
+session_accent = true
+transparent = false
+show_hook_status = false
+
+[output]
+out_enabled = true
+
+[task]
+max_concurrency = 32
+max_recursion_depth = 2
+soft_request_budget = 200
+max_runtime_ms = 0
+agent_idle_ttl_ms = 420000
+async = true
+batch = true
+steps = false
+enable_effort = false
+per_call_model = "off"
+per_call_model_allow = []
+agent_models = {}
+structured = false
+disabled_agents = []
+
+[task.isolation]
+enabled = false
+merge = "patch"
+apply = false
+
+[compaction]
+enabled = true
+threshold_percent = -1
+threshold_tokens = -1
+keep_recent_tokens = 20000
+mid_turn_enabled = true
+auto_continue = true
+async_enabled = true
+method_order = ["handoff", "shake", "summary"]
+
+[compaction.idle]
+enabled = false
+threshold_tokens = 200000
+timeout_secs = 300
+
+[share]
+store = "blob"
+server = ""
+redact = true
+
+[collab]
+relay = ""

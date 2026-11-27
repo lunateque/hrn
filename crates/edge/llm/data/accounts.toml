@@ -1,0 +1,17 @@
+# Default account-pool, service-tier, slow-mode, and extended-context settings.
+extended_context = false
+
+[retry]
+usage_reserve_pct = 10
+
+[tier]
+openai = "none"
+anthropic = "none"
+google = "none"
+subagent = "inherit"
+
+[anthropic]
+slow_mode = false
+
+[kimi]
+api_format = "auto"

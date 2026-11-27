@@ -1,0 +1,18 @@
+[package]
+name = "hrn-mod-hooks"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+hrn-edge-proc.workspace = true
+hrn-edge-rt.workspace = true
+hrn-kernel.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

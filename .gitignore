@@ -1,0 +1,9 @@
+/target
+/.harness
+/.omp
+*.db
+*.db-shm
+*.db-wal
+*.log
+.env
+secrets/

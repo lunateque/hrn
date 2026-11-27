@@ -1,0 +1,6 @@
+{
+  "py": true,
+  "js": true,
+  "tools_enabled": true,
+  "default_timeout_secs": 30
+}

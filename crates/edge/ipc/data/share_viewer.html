@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hrn sealed share</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1f2328;--dim:#656d76;--line:#d0d7de;--user:#ddf4ff;--code:#f6f8fa;--err:#cf222e}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--dim:#8b949e;--line:#30363d;--user:#12263f;--code:#161b22;--err:#f85149}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,sans-serif}
+main{max-width:56rem;margin:0 auto;padding:1.5rem}
+h1{font-size:1.3rem;margin:0 0 .5rem}
+.meta{color:var(--dim);font-size:.85rem;margin:0 0 1.25rem}
+.status{color:var(--dim);font-size:.9rem;padding:.75rem;border:1px solid var(--line);border-radius:6px}
+.status.error{color:var(--err);border-color:var(--err)}
+.msg{border:1px solid var(--line);border-radius:6px;margin:.75rem 0;padding:.6rem .85rem}
+.msg.user{background:var(--user)}
+.role{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin-bottom:.25rem}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+details{margin:.75rem 0;border:1px solid var(--line);border-radius:6px;padding:.45rem .8rem;background:var(--code)}
+details.error{border-color:var(--err)}
+summary{cursor:pointer;color:var(--dim);font-size:.85rem}
+details pre{margin-top:.5rem}
+.note{color:var(--dim);font-style:italic;margin:.75rem 0;font-size:.85rem}
+</style>
+</head>
+<body>
+<main id="app">
+<h1>hrn sealed share</h1>
+<div id="status" class="status">Decrypting sealed transcript in browser...</div>
+</main>
+<script>
+(function(){
+"use strict";
+const MAX_UNSEALED = 16 * 1024 * 1024;
+const app = document.getElementById("app");
+const statusEl = document.getElementById("status");
+
+function setStatus(msg, isErr) {
+  statusEl.textContent = msg;
+  statusEl.className = isErr ? "status error" : "status";
+}
+
+function b64UrlDecode(str) {
+  const clean = str.trim().replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - (clean.length % 4)) % 4;
+  const bin = atob(clean + "=".repeat(pad));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function gunzipCapped(bytes) {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("Browser does not support DecompressionStream('gzip').");
+  }
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_UNSEALED) {
+      await reader.cancel();
+      throw new Error("Decompressed snapshot exceeds 16 MiB safety cap.");
+    }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    merged.set(c, offset);
+    offset += c.byteLength;
+  }
+  return merged;
+}
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+
+function appendDetails(parent, summaryText, bodyText, isError) {
+  const det = el("details", isError ? "error" : "");
+  det.appendChild(el("summary", "", summaryText));
+  det.appendChild(el("pre", "", bodyText));
+  parent.appendChild(det);
+}
+
+function renderMessage(parent, msg) {
+  if (!msg || typeof msg !== "object") return;
+  const role = String(msg.role || "unknown");
+  if (role === "user") {
+    const box = el("div", "msg user");
+    box.appendChild(el("div", "role", "User"));
+    box.appendChild(el("pre", "", msg.content || ""));
+    if (Array.isArray(msg.images) && msg.images.length > 0) {
+      box.appendChild(el("p", "note", msg.images.length + " image attachment(s)"));
+    }
+    parent.appendChild(box);
+  } else if (role === "assistant") {
+    if (msg.reasoning) appendDetails(parent, "Reasoning", msg.reasoning, false);
+    if (msg.content) {
+      const box = el("div", "msg");
+      box.appendChild(el("div", "role", "Assistant"));
+      box.appendChild(el("pre", "", msg.content));
+      parent.appendChild(box);
+    }
+    if (Array.isArray(msg.tool_calls)) {
+      for (const call of msg.tool_calls) {
+        const name = call && call.name ? call.name : "tool";
+        let args = call && call.arguments ? String(call.arguments) : "";
+        try { args = JSON.stringify(JSON.parse(args), null, 2); } catch (_) {}
+        appendDetails(parent, "Tool call: " + name, args, false);
+      }
+    }
+  } else if (role === "tool") {
+    const name = msg.tool_name || "tool";
+    const label = "Tool result: " + name + (msg.is_error ? " (error)" : "");
+    appendDetails(parent, label, msg.content || "", Boolean(msg.is_error));
+  } else {
+    parent.appendChild(el("p", "note", role + ": " + (msg.content || "")));
+  }
+}
+
+function renderSnapshot(snap) {
+  while (app.firstChild) app.removeChild(app.firstChild);
+  const meta = snap.meta || {};
+  app.appendChild(el("h1", "", meta.title || "hrn sealed share"));
+  const infoParts = [];
+  if (meta.id) infoParts.push("Session: " + meta.id);
+  if (meta.model) infoParts.push("Model: " + meta.model);
+  if (meta.redacted) infoParts.push("Redacted");
+  if (meta.trimmed) infoParts.push("Trimmed");
+  if (infoParts.length > 0) app.appendChild(el("p", "meta", infoParts.join(" | ")));
+  if (snap.system_prompt) appendDetails(app, "System prompt", snap.system_prompt, false);
+  const nodes = Array.isArray(snap.nodes) ? snap.nodes : [];
+  for (const node of nodes) {
+    const p = node && node.payload;
+    if (!p || typeof p !== "object") continue;
+    if (p.kind === "message") renderMessage(app, p.msg);
+    else if (p.kind === "summary") appendDetails(app, "Compacted summary", p.text || "", false);
+    else if (p.kind === "branch_summary") appendDetails(app, "Branch summary", p.text || "", false);
+    else if (p.kind === "fork_marker") app.appendChild(el("p", "note", "Fork: " + (p.label || "")));
+    else if (p.kind === "model_change") app.appendChild(el("p", "note", "Model switched to " + (p.selector || "")));
+    else if (p.kind === "label" && p.label) app.appendChild(el("p", "note", "Label: " + p.label));
+  }
+}
+
+async function main() {
+  const m = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{8,64})\/?$/);
+  if (!m) {
+    setStatus("hrn local/LAN relay is running. Open a /s/<id>#<key> share link to view a transcript.", false);
+    return;
+  }
+  const id = m[1];
+  const frag = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  if (!frag) {
+    setStatus("Missing decryption key in URL fragment (#<key>).", true);
+    return;
+  }
+  let keyBytes;
+  try {
+    keyBytes = b64UrlDecode(frag);
+  } catch (_) {
+    setStatus("Malformed base64url key in URL fragment.", true);
+    return;
+  }
+  if (keyBytes.length !== 32) {
+    setStatus("Invalid key length in URL fragment (expected 32 bytes).", true);
+    return;
+  }
+  const resp = await fetch("/s/" + encodeURIComponent(id) + "/raw", { cache: "no-store" });
+  if (!resp.ok) {
+    setStatus("Failed to load sealed blob (HTTP " + resp.status + ").", true);
+    return;
+  }
+  const raw = new Uint8Array(await resp.arrayBuffer());
+  if (raw.length < 28) {
+    setStatus("Corrupted sealed payload (too short).", true);
+    return;
+  }
+  const iv = raw.slice(0, 12);
+  const ct = raw.slice(12);
+  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+  const compressed = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, ct));
+  const plainBytes = await gunzipCapped(compressed);
+  const snapshot = JSON.parse(new TextDecoder().decode(plainBytes));
+  renderSnapshot(snapshot);
+}
+
+main().catch(function(err) {
+  setStatus("Decryption failed: " + (err && err.message ? err.message : String(err)), true);
+});
+})();
+</script>
+</body>
+</html>

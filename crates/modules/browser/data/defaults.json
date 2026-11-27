@@ -1,0 +1,7 @@
+{
+  "relay": false,
+  "cdp_url": null,
+  "binary": null,
+  "screenshot_dir": null,
+  "headless": true
+}

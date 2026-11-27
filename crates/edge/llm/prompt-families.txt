@@ -1,0 +1,15 @@
+# Base-prompt variants, selected by model family (`prompt_sources.rs`), never by hardcoded
+# model names in Rust. `base.md` is the prescriptive omp-style law for weaker/open models
+# (flash, qwen, glm); `base.claude.md` is the lean judgement prompt for the Claude 5 family
+# (Anthropic "new rules"); `base.gpt5.md` is the trimmed GPT-5 law (OpenAI guides: redundant
+# instructions degrade it). A preset may pin a variant explicitly (`promptVariant` in
+# models.yml, `prompt_variant` in `[models.*]`); the family table below is the fallback,
+# matched against the lower-cased model id, first hit wins. `*` matches within a `-`/`.`-name.
+#
+#   pattern = variant
+claude-opus-5* = claude
+claude-sonnet-5* = claude
+claude-fable-* = claude
+claude-mythos-* = claude
+gpt-5* = gpt5
+gpt-6* = gpt5

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "rust",
+    "aliases": ["rust", "rs"],
+    "extensions": ["rs"],
+    "expando": "µ"
+  },
+  {
+    "name": "python",
+    "aliases": ["python", "py"],
+    "extensions": ["py", "py3", "pyi"],
+    "expando": "µ"
+  },
+  {
+    "name": "javascript",
+    "aliases": ["javascript", "js", "jsx"],
+    "extensions": ["cjs", "js", "mjs", "jsx"],
+    "expando": "$"
+  },
+  {
+    "name": "typescript",
+    "aliases": ["typescript", "ts"],
+    "extensions": ["ts", "cts", "mts"],
+    "expando": "$"
+  },
+  {
+    "name": "tsx",
+    "aliases": ["tsx"],
+    "extensions": ["tsx"],
+    "expando": "$"
+  },
+  {
+    "name": "go",
+    "aliases": ["go", "golang"],
+    "extensions": ["go"],
+    "expando": "µ"
+  },
+  {
+    "name": "json",
+    "aliases": ["json"],
+    "extensions": ["json"],
+    "expando": "$"
+  },
+  {
+    "name": "bash",
+    "aliases": ["bash", "sh", "shell", "zsh"],
+    "extensions": ["bash", "sh", "zsh", "ksh", "bats"],
+    "expando": "$"
+  }
+]

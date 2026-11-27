@@ -1,0 +1,320 @@
+# hrn example configuration — copy to ~/.harness/config.toml (or pass --config <path>)
+#
+# Security note:
+#   hrn never reads third-party CLI secret files and refuses the Google Gemini CLI /
+#   Antigravity OAuth clients. Claude Pro/Max and ChatGPT Plus/Pro work through
+#   `hrn login claude` / `hrn login chatgpt` (its own token store), for example:
+#     [[providers]]
+#     name = "claude"
+#     kind = "anthropic"
+#     auth_mode = "claude"      # or kind = "openai_responses", auth_mode = "chatgpt"
+
+# Default thinking effort: auto | off | minimal | low | medium | high | xhigh | max
+thinking = "medium"
+
+# Passive post-turn advisor reviewer (optional; also toggleable via --advisor or /advisor)
+# [advisor]
+# enabled = false
+# model = "reviewer" # optional preset or role (defaults to "reviewer" role, else session model)
+# thinking = "low"
+# max_tokens = 384
+
+# Quick-cycle order for Ctrl+P in the TUI (optional; defaults to all [models.*])
+cycle = ["opus", "codex", "flash"]
+
+# Operator LLM transport settings (project `.harness/config.toml` cannot loosen these)
+# [llm]
+# allow_plaintext_http = false  # set true to allow sending API keys over http:// to trusted LAN hosts during login probes
+
+# ── Providers ────────────────────────────────────────────────────────────────
+
+# Anthropic Messages API (official API key + prompt caching)
+[[providers]]
+name = "anthropic"
+kind = "anthropic"
+base_url = "https://api.anthropic.com"
+api_key_env = "ANTHROPIC_API_KEY"
+prompt_cache = true
+timeout_secs = 180
+
+# OpenAI /responses API (GPT-5 / Codex / o-series)
+[[providers]]
+name = "openai"
+kind = "openai_responses"
+base_url = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+strip_temperature = true
+timeout_secs = 180
+
+# Official Gemini Developer API (API key only — OAuth is intentionally blocked)
+[[providers]]
+name = "gemini"
+kind = "gemini"
+base_url = "https://generativelanguage.googleapis.com"
+api_key_env = "GEMINI_API_KEY"
+
+# Any OpenAI-compatible gateway (LiteLLM, OpenRouter, Ollama, vLLM, etc.)
+[[providers]]
+name = "gateway"
+kind = "openai_chat"
+base_url = "http://127.0.0.1:4000/v1"
+api_key_env = "GATEWAY_API_KEY"
+# Optional extra headers sourced from environment variables:
+# [providers.header_envs]
+# X-Tenant-Id = "GATEWAY_TENANT"
+
+# Official Antigravity CLI subscription provider (delegates auth & inference to `agy acp --stdio`
+# over a loopback MCP bridge; hrn never reads or stores Antigravity OAuth tokens).
+# Run `hrn login agy` and `hrn doctor` to verify CLI >= 1.5.0 and discovered model IDs.
+# [[providers]]
+# name = "agy"
+# kind = "agy_acp"
+# tool_mode = "hrn"                  # "hrn" (default loopback MCP bridge) or "native"
+# handoff_threshold_tokens = 12000   # rewind/fork above this uses Smart Handoff via `handoff_model`
+# handoff_model = "smol"
+#
+# [models.agy]
+# provider = "agy"
+# id = "claude-sonnet-4-6"           # or claude-opus-4-6-thinking, gemini-3.1-pro-high, ...
+# context_window = 200000
+# thinking = "medium"
+# NOTE: Do NOT bind cheap background roles (`smol`, `title`, `compaction`) to expensive `agy_acp`
+# models; keep a fast API/local preset on `fast`/`smol` for compaction and Smart Handoff summaries.
+
+# Example: Generic RFC 8252 OAuth2 PKCE provider (run `hrn login corp_oidc`)
+# [[providers]]
+# name = "corp_oidc"
+# kind = "openai_responses"
+# base_url = "https://llm.corp.example/v1"
+# [providers.oauth]
+# authorize_url = "https://sso.corp.example/oauth2/authorize"
+# token_url = "https://sso.corp.example/oauth2/token"
+# client_id = "your-registered-client-id"
+# scope = "openid offline_access"
+
+# ── Model Presets ────────────────────────────────────────────────────────────
+
+# Models normally need no entry here: the built-in models.yml (Claude / Codex subscriptions after
+# `hrn login`), ~/.harness/models.yml and ~/.omp/agent/models.yml supply `<provider>/<id>` models
+# exactly as omp names them (see `hrn models`). An entry here wins over those; name it
+# "<provider>/<id>" to override one, or give it a short key. Optional: `name = "Display name"`,
+# `reasoning = false` (never send a thinking effort).
+
+[models.opus]
+provider = "anthropic"
+id = "claude-opus-4-6"
+context_window = 1000000
+thinking = "high"
+
+[models.codex]
+provider = "openai"
+id = "gpt-6.2-sol"
+context_window = 500000
+thinking = "medium"
+
+[models.flash]
+provider = "gemini"
+id = "gemini-2.5-flash"
+context_window = 1000000
+thinking = "low"
+# Optional price in USD per million tokens; it turns on the `$` segment, the cost in `hrn exec`'s
+# summary and the COST column of `hrn stats`. `cache_read` / `cache_write` default to `input`.
+# Not allowed on a subscription login (claude / chatgpt): those show tokens only.
+# price = { input = 0.30, output = 2.50, cache_read = 0.03 }
+
+# ── Semantic Roles ───────────────────────────────────────────────────────────
+# Used by built-in subagent profiles (explore, plan, task, quick_task, reviewer) and by the
+# `find` tool ([find] below). A `find` role that is not set falls back to `fast`, then `default`.
+
+[roles]
+default = "opus"
+fast = "flash"
+plan = "opus"
+reviewer = "codex"
+
+# ── Model-Preset Role Bundles (omp's `modelPresets`) ─────────────────────────
+# Named snapshots of `[roles]` (+ an optional default thinking level), switched as one unit with
+# `/modelpreset save|switch <name>` or `--preset <name>`. The same `thinking: { efforts,
+# defaultLevel, effortBudgets }` block per model clamps `:level` requests to what the model
+# serves in models.yml (~/.harness/models.yml, ~/.omp/agent/models.yml).
+
+# [modelPresets.thorough]
+# modelRoles = { default = "opus", fast = "flash", plan = "opus" }
+# defaultThinkingLevel = "high"
+
+# ── Fallback Chains ──────────────────────────────────────────────────────────
+# Automatic failover when a preset's provider returns 429/5xx or times out
+
+[fallback]
+opus = ["codex", "flash"]
+codex = ["opus", "flash"]
+
+# ── File tools (module `fs`, optional) ───────────────────────────────────────
+# edit_mode picks the file editor the model sees: "hashline" (default) is `edit`, line-anchored
+# patches against the `[path#TAG]` snapshot header of `read`; "replace" is also named `edit`,
+# search-replace of `old` with `new`. `apply_patch` is available in both.
+# [fs]
+# edit_mode = "hashline"
+# grep_context_before = 0   # context lines grep shows before a match
+# grep_context_after = 0    # ... and after it
+
+# ── Checkpoints (module `checkpoint`, optional) ─────────────────────────────
+# `checkpoint` / `rewind` snapshot the working tree in a shadow git repository per directory
+# (<data dir>/checkpoints/<hash>) and mark the conversation; `rewind` restores the files and
+# returns the conversation to the mark, keeping only the report. `auto` snapshots before a turn's
+# first editing call so every turn is undoable; `exclude` are gitignore patterns the snapshot
+# leaves alone (the project's own .gitignore is honoured as well).
+# [checkpoint]
+# auto = true
+# timeout_secs = 60
+# tools = ["edit", "write", "apply_patch", "bash", "eval"]
+# exclude = [".git/", ".hg/", ".svn/", "node_modules/", "target/", ".venv/",
+#            "__pycache__/", ".harness/wt/"]   # this is the default
+
+# ── AST search & rewrite (module `ast`, optional) ────────────────────────────
+# `ast_grep` finds nodes by AST pattern; `ast_edit` stages a codemod as a proposal and writes
+# files only on `resolve <reason>` (`reject <reason>` discards it). Both are found through
+# `tool_search` unless discover=false. Grammars live in the `hrn-ast` sidecar binary next to
+# hrn (build it with `cargo build -p hrn-ast --release`); scopes use the shared `path` grammar.
+# [ast]
+# max_matches = 50   # matches one `ast_grep` call shows
+# max_files = 1000   # files one `ast_edit` pass may touch
+# discover = true    # load the tools through `tool_search` instead of every request
+
+# ── Shell (module `shell`, optional) ─────────────────────────────────────────
+# A foreground `bash` command still running after auto_background_secs (0 never backgrounds) is
+# moved to a background job: the call answers with what it printed so far and the job id, and the
+# result arrives as a follow-up message. pty_default=true gives every foreground call a
+# pseudo-terminal; a `pty` call returns after pty_idle_ms of quiet output while its job keeps
+# running, and `write proc://<id>` waits up to input_wait_ms for the program's answer.
+# [shell]
+# auto_background_secs = 60
+# pty_default = false
+# pty_idle_ms = 2000
+# input_wait_ms = 3000
+
+# ── Ask form (core, optional) ────────────────────────────────────────────────
+# ask_timeout_secs: an `ask` form nobody touches for this long (any key restarts the count) is
+# submitted with its current values; 0, the default, waits forever.
+# [tools]
+# ask_timeout_secs = 0
+
+# ── Terminal UI (Optional) ───────────────────────────────────────────────────
+# theme: a built-in name ("titanium", the muted default, or "titanium-vivid") or the path of a
+# theme file: a TOML file with `base = "<built-in>"` (default "titanium") and a `[colors]` table
+# listing only the tokens it changes (see crates/front/tui/themes/titanium.toml for all of them).
+# [tui]
+# theme = "titanium"
+# Desktop notifications + window-title updates when a turn ends or input is needed and the
+# terminal is unfocused (or the turn took longer than notify_after_secs): OSC 9 / OSC 777 / BEL.
+# notify = true
+# notify_after_secs = 30      # 0 disables the long-turn warning
+# notify_title = "hrn"        # the name in the toast
+
+# ── Web tools (module `web`, optional) ──────────────────────────────────────
+# Providers are tried in order; the first that answers wins, a failure moves on. Each provider's
+# endpoint and the environment variables of its credential live in
+# crates/edge/tools/src/web_search/backends.toml: BRAVE_API_KEY, TAVILY_API_KEY,
+# PERPLEXITY_API_KEY, PARALLEL_API_KEY, FIRECRAWL_API_KEY (+ FIRECRAWL_BASE_URL to self-host),
+# JINA_API_KEY, EXA_API_KEY (Exa also works without one), SEARXNG_URL / SEARXNG_ENDPOINT
+# (+ SEARXNG_TOKEN). A keyed provider without its key is skipped. DuckDuckGo needs no key and is
+# rate limited to one request per ddg_interval_ms.
+# [web]
+# chain = ["brave", "tavily", "perplexity", "parallel", "firecrawl", "jina", "searxng", "exa",
+#          "duckduckgo"]                                                    # this is the default
+# timeout_secs = 20
+# ddg_interval_ms = 1500
+# searxng_url = "https://searx.example.com"
+
+# ── User hooks and custom tools (module `hooks`, optional) ──────────────────
+# Executables in `<dir>/hooks` of any discovery layer (~/.harness, ~/.omp/agent, ~/.claude,
+# .harness, .omp, .claude, .agent, .agents, .codex) run on every event; so does every command
+# listed here. Each gets one JSON object on stdin (`hook_event_name`, `session_id`, `cwd`, plus
+# the event's data) and answers with JSON on stdout:
+#   {"blocked": true, "reason": "…"}          block / stop
+#   {"args": {…}}                             run the tool with these arguments instead
+#   {"context": "…"}                          add a trusted note the model must see
+# A hook that exits 2 blocks with its stderr as the reason (Claude-Code's shape is understood
+# too, and `settings.json` hooks of those directories are read the same way).
+# [hooks]
+# enabled = true
+# timeout_secs = 15          # per hook; a slow or hung hook is killed and reported
+# max_output_bytes = 65536   # a hook's stdout beyond this is ignored
+# discover_tools = true      # register `<dir>/tools/<name>.json` + `<name>` as tools
+# discover_claude_settings = true  # read Claude-Code `settings.json` hooks
+# pre_tool = ["~/bin/forbid-rm-rf.exe"]
+# post_tool = []
+# turn_end = []
+# session_start = []
+# user_prompt = []
+
+# ── Semantic search (module `find`, optional) ───────────────────────────────
+# A keyword scan of the live tree picks the candidate files; a fast model then scores
+# line-ranged excerpts of them. Every limit below caps the tokens one call can spend.
+# [find]
+# role = "find"          # model or role that scores; unset `find` falls back to `fast`, then default
+# max_files = 30         # files kept after the keyword scan
+# max_chunk_lines = 40   # longest excerpt, in lines
+# max_chunks = 48        # excerpts scored per call
+# batch_chunks = 8       # excerpts per model request
+# concurrency = 4        # model requests in flight at once
+# max_results = 10       # hits returned
+# min_score = 0.15       # hits below this are dropped
+
+# ── Native MCP Servers (Optional) ────────────────────────────────────────────
+# hrn also auto-discovers ~/.omp/agent/mcp.json (oh-my-pi's file, lowest precedence; env values
+# that name an environment variable are resolved from it), ~/.harness/mcp.json, .mcp.json, and
+# .harness/mcp.json. Tool lists are cached in ~/.harness/mcp-cache.json, so a server only starts
+# on its first tool call; `hrn mcp ping [server]` refreshes the cache.
+# MCP tools default to auto_approve = true (set auto_approve = false to gate them).
+#
+# MCP tool schemas are sent with every request, so they have a token budget. Servers are loaded
+# whole, smallest first, while they fit; the rest are listed by name only and the model loads
+# them with `tool_search` (the activation is kept by the session, so --resume keeps it).
+# [mcp_tools]
+# budget_tokens = 8000   # default; 0 defers every MCP tool
+
+# [[mcp]]
+# name = "filesystem"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+# auto_approve = true
+
+# [[mcp]]
+# name = "remote_docs"
+# url = "https://docs.example.com/mcp"
+# auto_approve = true
+# [mcp.headers]
+# Authorization = "Bearer ${DOCS_MCP_TOKEN}"
+
+# ── Optional Module Environment Overrides ────────────────────────────────────
+# Browser (module `browser`):
+#   HRN_BROWSER_BIN      = path to chrome.exe / msedge.exe / brave.exe
+#   HRN_BROWSER_CDP_URL  = attach to an existing local CDP endpoint (e.g. http://127.0.0.1:9222)
+# Antigravity Bridge (module `agy`):
+#   HRN_AGY_BIN          = explicit path to `agy` CLI binary
+
+# ── Debug adapter module (`debug`) ───────────────────────────────────────────
+# Per-request timeout in seconds, clamped to 5..=300 (default 30).
+# [debug]
+# timeout_secs = 30
+#
+# Adapters are detected on PATH (`gdb`, `lldb-dap`, `codelldb`, `dlv`, ...) or, for
+# `debugpy`, as an importable Python module. Add or override a descriptor under
+# [debug.adapters.<id>]; keys merge over the built-in one:
+#   command / args        adapter argv (`${port}` = reserved loopback port for connect="tcp")
+#   connect               "stdio" (default) or "tcp"
+#   languages / fileTypes / rootMarkers      auto-selection metadata
+#   accepts_directory     the adapter debugs a package directory (dlv)
+#   attach_port / attach_connect            attach by port; send host/port in a `connect` object
+#   python_module         require an importable module before the adapter is offered
+#   locate_env / locate_paths               find the adapter at a path (env var wins)
+#   launch / attach       default DAP arguments for each request
+#   launch_for.file / launch_for.directory / launch_for.extension."<ext>"
+#   request arguments keyed by the target's kind
+# [debug.adapters.custom-jvm]
+# command = "kotlin-debug-adapter"
+# args = ["--stdio"]
+# languages = ["java", "kotlin"]
+# fileTypes = ["java", "kt", "kts"]
+# rootMarkers = ["pom.xml", "build.gradle"]

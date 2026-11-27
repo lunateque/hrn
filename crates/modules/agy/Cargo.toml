@@ -1,0 +1,17 @@
+[package]
+name = "hrn-mod-agy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+hrn-edge-proc.workspace = true
+hrn-edge-rt.workspace = true
+hrn-kernel.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

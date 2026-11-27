@@ -1,0 +1,18 @@
+[package]
+name = "hrn-edge-proc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+hrn-kernel = { workspace = true }
+portable-pty = { workspace = true }
+process-wrap = { workspace = true }
+tokio = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+win32job = { workspace = true }
+
+[lints]
+workspace = true

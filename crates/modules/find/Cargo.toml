@@ -1,0 +1,22 @@
+[package]
+name = "hrn-mod-find"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+hrn-edge-rt.workspace = true
+hrn-edge-tools.workspace = true
+hrn-kernel.workspace = true
+
+[dev-dependencies]
+hrn-edge-http.workspace = true
+hrn-edge-llm.workspace = true
+hrn-edge-oauth.workspace = true
+hrn-kernel = { workspace = true, features = ["testing"] }
+tokio.workspace = true

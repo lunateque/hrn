@@ -1,0 +1,14 @@
+{
+  "$comment": "Per-section system-prompt token budgets (spec prompt-spec.md 4.3). One token is estimated as four bytes, the same convention as `context_overhead`. Lists are oldest-cut with a visible `… (N more)` marker; prose sections are cut at a line boundary.",
+  "base": 700,
+  "static": 900,
+  "append_system": 3000,
+  "context_files": 4000,
+  "context_files_max": 4,
+  "skills_catalog": 1200,
+  "agents_catalog": 400,
+  "deferred_groups": 200,
+  "memories": 1200,
+  "tool_schemas": 10500,
+  "cold_total": 18000
+}

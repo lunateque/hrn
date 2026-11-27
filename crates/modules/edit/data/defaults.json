@@ -1,0 +1,11 @@
+{
+  "mode": "hashline",
+  "model_variants": {},
+  "fuzzy_match": true,
+  "fuzzy_threshold": 0.95,
+  "block_auto_generated": true,
+  "enforce_seen_lines": true,
+  "recover_inline_edits": true,
+  "auto_repair": false,
+  "blackbox": false
+}

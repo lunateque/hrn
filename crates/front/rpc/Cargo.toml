@@ -1,0 +1,19 @@
+[package]
+name = "hrn-rpc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+hrn-kernel.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+
+[features]
+default = ["rpc", "acp"]
+rpc = []
+acp = []
+
+[lints]
+workspace = true

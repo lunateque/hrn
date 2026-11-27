@@ -1,0 +1,38 @@
+{
+  "$comment": "omp's magic keywords (packages/coding-agent/src/modes/magic-keywords.ts): standalone lowercase prose words in a user prompt that change that turn's behavior. `level` is the thinking change (raise = only when thinking is auto; set = pinned for the turn), `notice` the hidden instruction.",
+  "keywords": [
+    {
+      "keyword": "ultrathink",
+      "level": "xhigh",
+      "raise": true,
+      "notice": "Reason carefully in multiple steps before acting: enumerate failure modes, verify assumptions against the repo, and weigh alternatives. Quality over speed."
+    },
+    {
+      "keyword": "chillax",
+      "level": "minimal",
+      "raise": false,
+      "notice": "Keep this answer brief and low-ceremony: a short reasoning pass, then the direct answer or smallest correct change."
+    },
+    {
+      "keyword": "orchestrate",
+      "level": null,
+      "raise": false,
+      "requires": ["task"],
+      "notice": "Scope the full task, delegate substantial independent work in parallel with the `task` tool, verify each phase's result, and continue until the request is complete."
+    },
+    {
+      "keyword": "workflowz",
+      "level": null,
+      "raise": false,
+      "requires": ["eval", "task"],
+      "notice": "Run this as a deterministic multi-subagent workflow: fan out with the `eval` kernel's agent()/workpool() helpers, collect with wait(), then merge and verify."
+    },
+    {
+      "keyword": "jevify",
+      "level": null,
+      "raise": false,
+      "requires": ["eval"],
+      "notice": "Classify in bulk with the `eval` kernel's judge(): freeze the question and rubric first, judge every item in one batch, then read only what the judge flags."
+    }
+  ]
+}

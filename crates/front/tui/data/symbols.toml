@@ -1,0 +1,90 @@
+# Embedded TUI symbol preset tables (`[tui] symbol_preset = "unicode" | "nerd" | "ascii"`).
+# Every glyph used across the status band, spinners, notices, and prompt lives here so
+# switching to `ascii` emits zero non-ASCII or powerline characters.
+
+[unicode]
+brand = "hrn"
+question = "?"
+approval = "?"
+thinking = ["◌", "○", "·", "◔", "◑", "◒", "◕", "●"]
+spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+pulse = ["✻", "✼", "❉", "❊", "✺", "✹", "✸", "✶"]
+dot = "·"
+fast = "*"
+goal = "◉"
+focused = "↪"
+gear = "#"
+folder = ""
+branch = "⑂"
+tokens_up = "↑"
+tokens_down = "↓"
+reasoning = "~"
+gauge_fill = "─"
+ellipsis = "…"
+gutter = "❯ "
+camera = "[img]"
+todo_active = "◐"
+divider = "──"
+notice_info = "· "
+notice_warn = "! "
+notice_error = "x "
+hook = "hk"
+vim_icon = "ν"
+
+[nerd]
+brand = "hrn"
+question = "?"
+approval = "?"
+thinking = ["◌", "○", "·", "◔", "◑", "◒", "◕", "●"]
+spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+pulse = ["✻", "✼", "❉", "❊", "✺", "✹", "✸", "✶"]
+dot = "·"
+fast = "*"
+goal = "󰓾"
+focused = "󰁔"
+gear = "#"
+folder = ""
+branch = ""
+tokens_up = ""
+tokens_down = ""
+reasoning = "~"
+gauge_fill = "─"
+ellipsis = "…"
+gutter = "❯ "
+camera = "[img]"
+todo_active = "◐"
+divider = "──"
+notice_info = " "
+notice_warn = "! "
+notice_error = "x "
+hook = "hk"
+vim_icon = ""
+
+[ascii]
+brand = "hrn"
+question = "?"
+approval = "?"
+thinking = ["?", "-", ".", "1", "2", "3", "4", "*"]
+spinner = ["|", "/", "-", "\\"]
+pulse = ["*", "+", "o", "."]
+dot = "|"
+fast = "*"
+goal = "@"
+focused = "->"
+gear = "#"
+folder = ""
+branch = "git"
+tokens_up = "^"
+tokens_down = "v"
+reasoning = "~"
+gauge_fill = "-"
+ellipsis = "..."
+gutter = "> "
+camera = "[img]"
+todo_active = "*"
+divider = "--"
+notice_info = "* "
+notice_warn = "! "
+notice_error = "x "
+hook = "hk"
+vim_icon = "V"

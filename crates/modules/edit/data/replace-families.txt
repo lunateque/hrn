@@ -1,0 +1,10 @@
+# Model families that fall back to `replace` mode when no explicit mode/variant applies
+# and `HRN_STRICT_EDIT_MODE` is not set.
+kimi
+mimo
+minimax
+deepseek
+stepfun
+codex-spark
+glm-flash
+glm-5.3-flash

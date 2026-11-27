@@ -1,0 +1,14 @@
+[package]
+name = "hrn-mod-web"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+hrn-edge-http.workspace = true
+hrn-edge-tools.workspace = true
+hrn-kernel.workspace = true
+
+[lints]
+workspace = true

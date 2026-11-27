@@ -1,0 +1,1180 @@
+# Declarative settings schema for `hrn config` CLI, env overrides, and `cfg://`.
+# Every key listed here is enumerable by `hrn config list/get/set/reset` and `read cfg://`.
+
+[[settings]]
+key = "thinking"
+type = "string"
+tab = "core"
+default = "medium"
+values = ["auto", "off", "minimal", "low", "medium", "high", "xhigh", "max"]
+env = "HRN_THINKING"
+description = "Default reasoning effort when --think is not passed."
+
+[[settings]]
+key = "enabled_models"
+type = "array"
+tab = "models"
+default = []
+path_scoped = true
+description = "Optional allowlist of enabled model selectors (supports path-scoped entries)."
+
+[[settings]]
+key = "disabled_providers"
+type = "array"
+tab = "models"
+default = []
+path_scoped = true
+description = "Provider names excluded from model resolution (supports path-scoped entries)."
+
+[[settings]]
+key = "llm.role_storage"
+type = "string"
+tab = "models"
+default = "global"
+values = ["global", "project"]
+description = "Where Roles Hub persists [roles] changes (global config or project .harness/config.toml)."
+
+[[settings]]
+key = "llm.context_promotion"
+type = "bool"
+tab = "models"
+default = false
+description = "Promote to a model's larger `context_promotion_target` before compacting on context overflow or threshold."
+
+[[settings]]
+key = "llm.extended_context"
+type = "bool"
+tab = "models"
+default = false
+operator_no_loosen = true
+description = "Use each preset's `max_context_window` when available (toggle per session with `/extended-context`)."
+
+[[settings]]
+key = "llm.allow_plaintext_http"
+type = "bool"
+tab = "models"
+default = false
+operator_no_loosen = true
+description = "Allow sending API keys over plaintext HTTP to non-loopback hosts during login probes (e.g. trusted LAN gateways)."
+
+[[settings]]
+key = "llm.accounts"
+type = "array"
+tab = "models"
+default = []
+operator_no_loosen = true
+description = "Per-account subscription pool policies (`provider`, `account`, `priority`, `reserve_pct`)."
+
+[[settings]]
+key = "llm.retry.usage_reserve_pct"
+type = "integer"
+tab = "models"
+default = 10
+operator_no_loosen = true
+description = "Protected remaining-quota percentage below which healthier sibling accounts are preferred."
+
+[[settings]]
+key = "llm.tier.openai"
+type = "string"
+tab = "models"
+default = "none"
+values = ["none", "auto", "default", "flex", "scale", "priority", "ultrafast"]
+operator_no_loosen = true
+description = "Default service tier for OpenAI / Codex / OpenAI-family OpenRouter models."
+
+[[settings]]
+key = "llm.tier.anthropic"
+type = "string"
+tab = "models"
+default = "none"
+values = ["none", "priority"]
+operator_no_loosen = true
+description = "Default service tier for direct Anthropic Claude models."
+
+[[settings]]
+key = "llm.tier.google"
+type = "string"
+tab = "models"
+default = "none"
+values = ["none", "flex", "priority"]
+operator_no_loosen = true
+description = "Default service tier for official Gemini Developer API models."
+
+[[settings]]
+key = "llm.tier.subagent"
+type = "string"
+tab = "models"
+default = "inherit"
+values = ["inherit", "none", "auto", "default", "flex", "scale", "priority", "ultrafast"]
+operator_no_loosen = true
+description = "Service tier for subagent turns (`inherit` follows the parent session)."
+
+[[settings]]
+key = "llm.anthropic.slow_mode"
+type = "bool"
+tab = "models"
+default = false
+operator_no_loosen = true
+description = "Enable Claude subscription low-priority recovery lane (`/slow`)."
+
+[[settings]]
+key = "llm.kimi.api_format"
+type = "string"
+tab = "models"
+default = "auto"
+values = ["auto", "openai", "anthropic"]
+operator_no_loosen = true
+description = "Wire API format for Kimi Code subscriptions (`auto`, `openai`, or `anthropic`)."
+
+[[settings]]
+key = "session.auto_resume"
+type = "bool"
+tab = "session"
+default = false
+env = "HRN_AUTO_RESUME"
+description = "Automatically resume the newest session in the current directory on bare `hrn chat`."
+
+[[settings]]
+key = "session.branch_summary"
+type = "bool"
+tab = "session"
+default = false
+description = "Offer abandoned-branch summarization by default when switching branches in /tree or /branch."
+
+[[settings]]
+key = "session.auto_title"
+type = "bool"
+tab = "session"
+default = true
+description = "Automatically generate a short session title after the first substantive turn."
+
+[[settings]]
+key = "session.title_refresh_on_replan"
+type = "bool"
+tab = "session"
+default = true
+description = "Refresh an auto-generated session title when a todo replan changes the task plan."
+
+[[settings]]
+key = "gc.retain_days"
+type = "integer"
+tab = "gc"
+default = 90
+operator_no_loosen = true
+description = "Minimum idle age in days before unpinned sessions become eligible for `hrn gc`."
+
+[[settings]]
+key = "gc.retain_newest_per_cwd"
+type = "integer"
+tab = "gc"
+default = 20
+operator_no_loosen = true
+description = "Always retain at least this many newest sessions per working directory during `hrn gc`."
+
+[[settings]]
+key = "gc.retain_newest_global"
+type = "integer"
+tab = "gc"
+default = 20
+operator_no_loosen = true
+description = "Always retain at least this many newest sessions globally during `hrn gc`."
+
+[[settings]]
+key = "gc.vacuum_reclaim_bytes"
+type = "integer"
+tab = "gc"
+default = 1048576
+operator_no_loosen = true
+description = "Reclaimable byte threshold above which `hrn gc --apply` runs WAL checkpoint and VACUUM."
+
+[[settings]]
+key = "commit.enabled"
+type = "bool"
+tab = "commit"
+default = true
+operator_no_loosen = true
+description = "Enable attributed `/commit` and `hrn commit` workflows."
+
+[[settings]]
+key = "commit.changelog"
+type = "bool"
+tab = "commit"
+default = false
+operator_no_loosen = true
+description = "Automatically append a changelog entry under `[Unreleased]` in `CHANGELOG.md` during `/commit`."
+
+[[settings]]
+key = "update.repo"
+type = "string"
+tab = "update"
+default = "lunateque/harness"
+operator_no_loosen = true
+description = "GitHub `owner/repo` slug queried by `hrn update` (operator-only; ignored from project configs)."
+
+[[settings]]
+key = "update.channel"
+type = "string"
+tab = "update"
+default = "stable"
+values = ["stable", "canary"]
+operator_no_loosen = true
+description = "Release channel for `hrn update` (`stable` or `canary`; operator-only)."
+
+[[settings]]
+key = "interaction.double_escape_action"
+type = "string"
+tab = "interaction"
+default = "tree"
+values = ["rewind", "tree", "none"]
+description = "Action taken on double-Esc when the prompt editor is empty."
+
+[[settings]]
+key = "interaction.btw_inject"
+type = "bool"
+tab = "interaction"
+default = false
+description = "Render `<inject>...</inject>` rail in /btw answers and enable Alt+I send-once."
+
+[[settings]]
+key = "roles.default"
+type = "string"
+tab = "models"
+description = "Default model alias, @role, or provider/id selector."
+
+[[settings]]
+key = "roles.smol"
+type = "string"
+tab = "models"
+env = "HRN_SMOL_MODEL"
+description = "Fast/smol model selector used for lightweight tasks and summaries."
+
+[[settings]]
+key = "roles.fast"
+type = "string"
+tab = "models"
+description = "Fast model alias (falls back to smol)."
+
+[[settings]]
+key = "roles.slow"
+type = "string"
+tab = "models"
+env = "HRN_SLOW_MODEL"
+description = "Thorough reasoning model selector for deep analysis."
+
+[[settings]]
+key = "roles.plan"
+type = "string"
+tab = "models"
+env = "HRN_PLAN_MODEL"
+description = "Architect model selector used during planning."
+
+[[settings]]
+key = "roles.vision"
+type = "string"
+tab = "models"
+description = "Multimodal vision model selector."
+
+[[settings]]
+key = "roles.commit"
+type = "string"
+tab = "models"
+description = "Model selector used for commit summaries."
+
+[[settings]]
+key = "roles.task"
+type = "string"
+tab = "models"
+description = "Default model selector for delegated subagent tasks."
+
+[[settings]]
+key = "roles.tiny"
+type = "string"
+tab = "models"
+description = "Ultra-lightweight model selector (falls back to smol -> fast)."
+
+[[settings]]
+key = "roles.memory"
+type = "string"
+tab = "models"
+description = "Model selector used for memory distillation (falls back to tiny -> smol -> fast)."
+
+[[settings]]
+key = "roles.advisor"
+type = "string"
+tab = "models"
+description = "Model selector used by the passive post-turn advisor (falls back to slow)."
+
+[[settings]]
+key = "roles.title"
+type = "string"
+tab = "models"
+description = "Model selector used for session auto-titling (falls back to tiny -> smol -> fast)."
+
+[[settings]]
+key = "roles.reviewer"
+type = "string"
+tab = "models"
+description = "Model selector for reviewer subagents."
+
+[[settings]]
+key = "roles.designer"
+type = "string"
+tab = "models"
+description = "Model selector for designer subagents."
+
+[[settings]]
+key = "roles.find"
+type = "string"
+tab = "models"
+description = "Model selector for fast search/exploration subagents (falls back to smol -> fast)."
+
+[[settings]]
+key = "roles.judge"
+type = "string"
+tab = "models"
+description = "Model selector used by eval `judge()` / `judge_batch()` (falls back to smol -> fast)."
+
+[[settings]]
+key = "advisor.enabled"
+type = "bool"
+tab = "advisor"
+default = false
+env = "HRN_ADVISOR_ENABLED"
+description = "Enable the passive post-turn advisor reviewer."
+
+[[settings]]
+key = "advisor.model"
+type = "string"
+tab = "advisor"
+env = "HRN_ADVISOR_MODEL"
+description = "Optional model alias for the passive advisor."
+
+[[settings]]
+key = "advisor.thinking"
+type = "string"
+tab = "advisor"
+default = "low"
+values = ["auto", "off", "minimal", "low", "medium", "high", "xhigh", "max"]
+description = "Thinking effort used by the passive advisor."
+
+[[settings]]
+key = "advisor.max_tokens"
+type = "integer"
+tab = "advisor"
+default = 384
+description = "Maximum completion tokens for one passive advisor note."
+
+[[settings]]
+key = "mcp_tools.budget_tokens"
+type = "integer"
+tab = "mcp"
+default = 4000
+description = "Schema-token budget for eagerly loaded MCP tools before deferral."
+
+[[settings]]
+key = "tools.ask_timeout_secs"
+type = "integer"
+tab = "tools"
+default = 0
+description = "Seconds an `ask` form waits before auto-submitting (0 = wait forever)."
+
+[[settings]]
+key = "tools.premium_defer"
+type = "bool"
+tab = "tools"
+default = true
+env = "HRN_TOOLS_PREMIUM_DEFER"
+description = "Defer rarely-used module tools behind `tool_search`."
+
+[[settings]]
+key = "tools.approval_mode"
+type = "string"
+tab = "tools"
+default = "yolo"
+values = ["always-ask", "always-ask-cached", "write", "yolo", "plan", "default", "auto-edit"]
+env = "HRN_APPROVAL_MODE"
+operator_no_loosen = true
+description = "Default tool approval mode (`yolo`, `write`, `always-ask`, `always-ask-cached`, `plan`)."
+
+[[settings]]
+key = "tools.restricted_folders"
+type = "array"
+tab = "tools"
+default = []
+merge = "prepend"
+operator_no_loosen = true
+description = "Folders where matching tool calls always require plain interactive Approve/Deny confirmation."
+
+[[settings]]
+key = "tools.approval"
+type = "table"
+tab = "tools"
+operator_no_loosen = true
+description = "Per-tool approval policy overrides (`<tool> = \"allow\" | \"deny\" | \"prompt\"`)."
+
+[[settings]]
+key = "tui.theme"
+type = "string"
+tab = "tui"
+env = "HRN_TUI_THEME"
+description = "Built-in TUI theme name or path to a theme file (legacy shorthand mapping both dark and light slots)."
+
+[[settings]]
+key = "tui.theme.dark"
+type = "string"
+tab = "tui"
+default = "titanium"
+description = "Theme name or path used when the terminal background is dark."
+
+[[settings]]
+key = "tui.theme.light"
+type = "string"
+tab = "tui"
+default = "titanium-light"
+description = "Theme name or path used when the terminal background is light."
+
+[[settings]]
+key = "tui.theme.current"
+type = "string"
+tab = "tui"
+default = "auto"
+values = ["auto", "dark", "light"]
+description = "Dark/light theme slot selector (`auto` probes OSC-11 luminance then `COLORFGBG`, defaulting to dark)."
+
+[[settings]]
+key = "tui.symbol_preset"
+type = "string"
+tab = "tui"
+default = "unicode"
+values = ["unicode", "nerd", "ascii"]
+description = "Glyph preset for the status band, spinners, notices, and prompt (`unicode`, `nerd`, or `ascii`)."
+
+[[settings]]
+key = "tui.color_blind_mode"
+type = "bool"
+tab = "tui"
+default = false
+description = "Shift diff-added colours from green to a deuteranopia-safe blue/cyan hue."
+
+[[settings]]
+key = "tui.statusline.preset"
+type = "string"
+tab = "tui"
+default = "default"
+values = ["default", "minimal", "compact", "full", "nerd", "ascii", "custom"]
+description = "Named statusline segment layout (`custom` uses `left_segments` / `right_segments`)."
+
+[[settings]]
+key = "tui.statusline.separator"
+type = "string"
+tab = "tui"
+default = "powerline"
+values = ["powerline", "powerline-thin", "slash", "pipe", "block", "none", "ascii"]
+description = "Separator style used between and around statusline segments."
+
+[[settings]]
+key = "tui.statusline.left_segments"
+type = "array"
+tab = "tui"
+default = []
+description = "Ordered list of left statusline segments when `preset = \"custom\"` (or to override a preset)."
+
+[[settings]]
+key = "tui.statusline.right_segments"
+type = "array"
+tab = "tui"
+default = []
+description = "Ordered list of right statusline segments when `preset = \"custom\"` (or to override a preset)."
+
+[[settings]]
+key = "tui.statusline.session_accent"
+type = "bool"
+tab = "tui"
+default = true
+description = "Highlight active session indicators (model, context gauge) with the theme's accent colour."
+
+[[settings]]
+key = "tui.statusline.transparent"
+type = "bool"
+tab = "tui"
+default = false
+description = "Render the statusline without any background surface fill."
+
+[[settings]]
+key = "tui.statusline.show_hook_status"
+type = "bool"
+tab = "tui"
+default = false
+description = "Display active hook status badges in the statusline."
+
+[[settings]]
+key = "tui.notify"
+type = "bool"
+tab = "tui"
+default = true
+env = "HRN_TUI_NOTIFY"
+description = "Enable terminal title updates and desktop notifications."
+
+[[settings]]
+key = "tui.notify_after_secs"
+type = "integer"
+tab = "tui"
+default = 30
+description = "Turn duration in seconds before notifying even a focused window (0 disables)."
+
+[[settings]]
+key = "tui.notify_title"
+type = "string"
+tab = "tui"
+default = "hrn"
+description = "Title shown in desktop toast notifications."
+
+[[settings]]
+key = "tui.pinned_agents"
+type = "string"
+tab = "tui"
+default = "collapsed"
+values = ["collapsed", "full", "off"]
+description = "Pinned Subagents jump block display mode above the editor (`collapsed`, `full`, or `off`)."
+
+[[settings]]
+key = "tui.subagent_live_preview"
+type = "bool"
+tab = "tui"
+default = true
+description = "Show a second live preview line with active tool and elapsed time (> 5s) in the pinned Subagents block."
+
+[[settings]]
+key = "tui.mouse"
+type = "bool"
+tab = "tui"
+default = false
+description = "Enable minimal terminal mouse capture for click-to-focus on pinned Subagents rows."
+
+[[settings]]
+key = "tui.vim_mode"
+type = "bool"
+tab = "tui"
+default = false
+description = "Enable modal Vim editing keybindings in the prompt editor."
+
+[[settings]]
+key = "tui.vim_mode_display"
+type = "string"
+tab = "tui"
+default = "text"
+values = ["text", "icon", "none"]
+description = "How the Vim mode badge renders in the status band (`text`, `icon`, or `none`)."
+
+[[settings]]
+key = "tui.recall_cleared_drafts"
+type = "bool"
+tab = "tui"
+default = true
+description = "Push drafts cleared with Ctrl+C onto a bounded in-memory deque recalled first by Up."
+
+[[settings]]
+key = "tui.hide_thinking"
+type = "bool"
+tab = "tui"
+default = false
+description = "Hide reasoning/thinking blocks in the transcript by default (`hideThinkingBlock` in omp)."
+
+[[settings]]
+key = "output.out_enabled"
+type = "bool"
+tab = "output"
+default = true
+env = "HRN_OUT_ENABLED"
+description = "Enable the write-only `out://` URL scheme for mid-turn assistant prose (defaults to true in interactive TUI, false in exec/rpc/acp)."
+
+[[settings]]
+key = "fs.grep_context_before"
+type = "integer"
+tab = "fs"
+default = 0
+description = "Context lines shown before each `grep` match."
+
+[[settings]]
+key = "fs.grep_context_after"
+type = "integer"
+tab = "fs"
+default = 0
+description = "Context lines shown after each `grep` match."
+
+[[settings]]
+key = "edit.mode"
+type = "string"
+tab = "edit"
+default = "hashline"
+values = ["hashline", "replace", "patch", "sloppy", "apply_patch", "none", "magic"]
+env = "HRN_EDIT_VARIANT"
+description = "Editor mode exposed by the `edit` tool (`patch`/`sloppy` alias `replace`; `none` unregisters `edit` and drops anchors)."
+
+[[settings]]
+key = "edit.model_variants"
+type = "table"
+tab = "edit"
+default = {}
+description = "Per-model edit mode overrides keyed by case-insensitive model substring (longest match wins)."
+
+[[settings]]
+key = "edit.fuzzy_match"
+type = "bool"
+tab = "edit"
+default = true
+env = "HRN_EDIT_FUZZY"
+description = "Allow trailing-whitespace, indentation, and similarity fallback matching in `edit`."
+
+[[settings]]
+key = "edit.fuzzy_threshold"
+type = "float"
+tab = "edit"
+default = 0.95
+env = "HRN_EDIT_FUZZY_THRESHOLD"
+description = "Minimum similarity ratio (0.0-1.0) for fuzzy matching and hashline near-miss hints."
+
+[[settings]]
+key = "edit.block_auto_generated"
+type = "bool"
+tab = "edit"
+default = true
+operator_no_loosen = true
+description = "Refuse edits to lockfiles and auto-generated files matching embedded generated-file globs."
+
+[[settings]]
+key = "edit.enforce_seen_lines"
+type = "bool"
+tab = "edit"
+default = true
+operator_no_loosen = true
+description = "Refuse edits targeting lines not yet displayed by `read` in the current session."
+
+[[settings]]
+key = "edit.recover_inline_edits"
+type = "bool"
+tab = "edit"
+default = true
+description = "Recover accidental inline edit blocks when a model emits raw patch markup in assistant prose."
+
+[[settings]]
+key = "edit.auto_repair"
+type = "bool"
+tab = "edit"
+default = false
+operator_no_loosen = true
+description = "Ask `@smol` to repair introduced AST syntax errors (accepted only when reparsing confirms zero new errors)."
+
+[[settings]]
+key = "edit.blackbox"
+type = "bool"
+tab = "edit"
+default = false
+description = "Append full file source to tool output when an edit introduces an AST syntax regression."
+
+[[settings]]
+key = "lsp.enabled"
+type = "bool"
+tab = "lsp"
+default = true
+operator_no_loosen = true
+description = "Enable the `lsp` tool and post-write/edit LSP hook (`--no-lsp` overrides to false)."
+
+[[settings]]
+key = "lsp.lazy"
+type = "bool"
+tab = "lsp"
+default = true
+operator_no_loosen = true
+description = "Start language servers lazily on first query or edit rather than eagerly at startup."
+
+[[settings]]
+key = "lsp.diagnostics_on_write"
+type = "bool"
+tab = "lsp"
+default = true
+description = "Append `[LSP diagnostics]` in the post-tool hook after `write` calls."
+
+[[settings]]
+key = "lsp.diagnostics_on_edit"
+type = "bool"
+tab = "lsp"
+default = false
+description = "Append `[LSP diagnostics]` in the post-tool hook after `edit` / `apply_patch` calls."
+
+[[settings]]
+key = "lsp.format_on_write"
+type = "bool"
+tab = "lsp"
+default = false
+operator_no_loosen = true
+description = "Run `textDocument/formatting` in the post-tool hook after `write` calls."
+
+[[settings]]
+key = "lsp.diagnostics_deduplicate"
+type = "bool"
+tab = "lsp"
+default = true
+description = "Deduplicate identical LSP diagnostics for the same location, code, and message."
+
+[[settings]]
+key = "lsp.request_timeout_secs"
+type = "integer"
+tab = "lsp"
+default = 10
+description = "Per-request LSP JSON-RPC timeout in seconds."
+
+[[settings]]
+key = "lsp.idle_timeout_secs"
+type = "integer"
+tab = "lsp"
+default = 300
+description = "Idle duration in seconds before warm LSP clients are shut down and evicted (0 disables)."
+
+[[settings]]
+key = "shell.shell_path"
+type = "string"
+tab = "shell"
+default = ""
+description = "Explicit POSIX shell executable path override for the `bash` tool (overridden by `HRN_SHELL`)."
+
+[[settings]]
+key = "shell.auto_background_secs"
+type = "integer"
+tab = "shell"
+default = 60
+description = "Seconds before a foreground `bash` command moves to the background (0 disables)."
+
+[[settings]]
+key = "shell.pty_default"
+type = "bool"
+tab = "shell"
+default = false
+env = "HRN_SHELL_PTY_DEFAULT"
+description = "Run foreground `bash` commands inside a pseudo-terminal by default."
+
+[[settings]]
+key = "shell.pty_idle_ms"
+type = "integer"
+tab = "shell"
+default = 2000
+description = "Quiet time in milliseconds before a `pty` command returns its job id."
+
+[[settings]]
+key = "shell.input_wait_ms"
+type = "integer"
+tab = "shell"
+default = 3000
+description = "Quiet wait in milliseconds after writing input to `proc://<id>`."
+
+[[settings]]
+key = "shell.patterns"
+type = "array"
+tab = "shell"
+default = []
+merge = "prepend"
+path_scoped = true
+operator_no_loosen = true
+description = "Ordered bash approval pattern rules (project layer cannot loosen operator rules)."
+
+[[settings]]
+key = "shell.allow_compound_commands"
+type = "bool"
+tab = "shell"
+default = false
+operator_no_loosen = true
+description = "Allow flat `&&` bash chains to auto-approve when every segment matches an allow pattern."
+
+[[settings]]
+key = "shell.allowed_env_vars"
+type = "array"
+tab = "shell"
+default = []
+operator_no_loosen = true
+description = "Environment variable names allowed as leading `KEY=VAL` prefixes on auto-approved bash commands."
+
+[[settings]]
+key = "shell.git_guard"
+type = "bool"
+tab = "shell"
+default = false
+operator_no_loosen = true
+description = "Refuse destructive git stash, reset --hard, switch, checkout, and restore in the main checkout."
+
+[[settings]]
+key = "shell.interceptor.enabled"
+type = "bool"
+tab = "shell"
+default = false
+description = "Intercept bash commands matching `shell.interceptor.patterns` and redirect to dedicated tools."
+
+[[settings]]
+key = "shell.interceptor.patterns"
+type = "array"
+tab = "shell"
+default = []
+merge = "prepend"
+path_scoped = true
+description = "Ordered regex rules redirecting `bash` invocations to dedicated tools."
+
+[[settings]]
+key = "desktop.display"
+type = "string"
+tab = "desktop"
+default = "active"
+description = "Default monitor selector for desktop captures."
+
+[[settings]]
+key = "desktop.max_width"
+type = "integer"
+tab = "desktop"
+default = 3840
+description = "Maximum capture width in physical pixels."
+
+[[settings]]
+key = "desktop.max_height"
+type = "integer"
+tab = "desktop"
+default = 2400
+description = "Maximum capture height in physical pixels."
+
+[[settings]]
+key = "desktop.background_fallback"
+type = "string"
+tab = "desktop"
+default = "takeover"
+values = ["takeover", "refuse"]
+description = "Fallback policy when background window input is unavailable."
+
+[[settings]]
+key = "desktop.eval_prelude"
+type = "bool"
+tab = "desktop"
+default = true
+operator_no_loosen = true
+description = "Expose the `computer.*` facade inside `eval` cells (routes through `tool.desktop` approvals)."
+
+[[settings]]
+key = "eval.py"
+type = "bool"
+tab = "eval"
+default = true
+operator_no_loosen = true
+description = "Enable the persistent Python (`py`) interpreter backend in `eval`."
+
+[[settings]]
+key = "eval.js"
+type = "bool"
+tab = "eval"
+default = true
+operator_no_loosen = true
+description = "Enable the persistent JavaScript (`js`) interpreter backend in `eval`."
+
+[[settings]]
+key = "eval.tools_enabled"
+type = "bool"
+tab = "eval"
+default = true
+operator_no_loosen = true
+description = "Allow `eval` cells to define kernel `@tool` functions shareable with `task` subagents."
+
+[[settings]]
+key = "eval.default_timeout_secs"
+type = "integer"
+tab = "eval"
+default = 30
+operator_no_loosen = true
+description = "Default per-cell timeout in seconds for `eval` (clamped 1..=3600; 0 disables timeout)."
+
+[[settings]]
+key = "browser.relay"
+type = "bool"
+tab = "browser"
+default = false
+description = "Default to the user's Chrome via the native browser relay."
+
+[[settings]]
+key = "browser.cdp_url"
+type = "string"
+tab = "browser"
+env = "HRN_BROWSER_CDP_URL"
+description = "Explicit Chrome DevTools Protocol HTTP/WebSocket endpoint."
+
+[[settings]]
+key = "browser.binary"
+type = "string"
+tab = "browser"
+env = "HRN_BROWSER_BIN"
+description = "Explicit Chromium/Chrome/Edge executable path."
+
+[[settings]]
+key = "browser.headless"
+type = "bool"
+tab = "browser"
+default = true
+description = "Launch managed browsers headlessly."
+
+[[settings]]
+key = "browser.screenshot_dir"
+type = "string"
+tab = "browser"
+description = "Optional directory where captured browser screenshots are also saved."
+
+[[settings]]
+key = "hooks.discover_claude_settings"
+type = "bool"
+tab = "hooks"
+default = false
+description = "Discover Claude Code hook entries from ~/.claude/settings.json."
+
+[[settings]]
+key = "web.api_key"
+type = "string"
+tab = "web"
+secret = true
+description = "Optional API key for configured web search providers."
+
+[[settings]]
+key = "task.max_concurrency"
+type = "integer"
+tab = "task"
+default = 32
+description = "Maximum concurrently running subagents per session tree."
+
+[[settings]]
+key = "task.max_recursion_depth"
+type = "integer"
+tab = "task"
+default = 2
+description = "Maximum nesting depth for recursive subagent calls."
+
+[[settings]]
+key = "task.soft_request_budget"
+type = "integer"
+tab = "task"
+default = 200
+description = "Soft LLM request budget per subagent run (1.5x enforces a hard stop; 0 disables)."
+
+[[settings]]
+key = "task.max_runtime_ms"
+type = "integer"
+tab = "task"
+default = 0
+description = "Maximum wall-clock runtime per subagent run in milliseconds (0 = unlimited)."
+
+[[settings]]
+key = "task.agent_idle_ttl_ms"
+type = "integer"
+tab = "task"
+default = 420000
+description = "Idle duration in milliseconds before a completed subagent transitions to parked."
+
+[[settings]]
+key = "task.async"
+type = "bool"
+tab = "task"
+default = true
+description = "Run spawned subagents asynchronously in the background."
+
+[[settings]]
+key = "task.batch"
+type = "bool"
+tab = "task"
+default = true
+description = "Accept batched `tasks[]` arrays in one `task` tool call."
+
+[[settings]]
+key = "task.steps"
+type = "bool"
+tab = "task"
+default = false
+description = "Expose multi-step `steps[]` chains on `task` items."
+
+[[settings]]
+key = "task.enable_effort"
+type = "bool"
+tab = "task"
+default = false
+description = "Expose per-item `effort` overrides on `task` items."
+
+[[settings]]
+key = "task.per_call_model"
+type = "string"
+tab = "task"
+default = "off"
+values = ["off", "eval", "on"]
+description = "Policy gating per-call `model` overrides on `task` items."
+
+[[settings]]
+key = "task.per_call_model_allow"
+type = "array"
+tab = "task"
+default = []
+description = "Optional allowlist of `provider/id` selectors permitted for per-call task `model` overrides."
+
+[[settings]]
+key = "task.agent_models"
+type = "table"
+tab = "task"
+default = {}
+description = "Per-agent model selector overrides (`[task.agent_models] <agent> = \"<selector>\"`)."
+
+[[settings]]
+key = "task.structured"
+type = "bool"
+tab = "task"
+default = false
+description = "Expose structured `outputSchema` / `schemaMode` fields on `task` items."
+
+[[settings]]
+key = "task.disabled_agents"
+type = "array"
+tab = "task"
+default = []
+description = "Subagent profile names disabled from spawning."
+
+[[settings]]
+key = "task.isolation.enabled"
+type = "bool"
+tab = "task"
+default = false
+description = "Allow `isolated: true` tasks to run inside dedicated git worktrees."
+
+[[settings]]
+key = "task.isolation.merge"
+type = "string"
+tab = "task"
+default = "patch"
+values = ["patch", "branch"]
+description = "How isolated worktree edits are returned (`patch` or `branch`)."
+
+[[settings]]
+key = "task.isolation.apply"
+type = "bool"
+tab = "task"
+default = false
+description = "Automatically apply captured isolation patches to the parent working tree."
+
+[[settings]]
+key = "compaction.enabled"
+type = "bool"
+tab = "compaction"
+default = true
+description = "Enable automatic context compaction when context usage crosses thresholds or overflows."
+
+[[settings]]
+key = "compaction.threshold_percent"
+type = "integer"
+tab = "compaction"
+default = -1
+description = "Percentage of context window that triggers compaction (-1 uses window minus reserve)."
+
+[[settings]]
+key = "compaction.threshold_tokens"
+type = "integer"
+tab = "compaction"
+default = -1
+description = "Absolute token count triggering compaction (-1 = unset; positive values override threshold_percent)."
+
+[[settings]]
+key = "compaction.reserve_tokens"
+type = "integer"
+tab = "compaction"
+description = "Explicit reserve token floor kept free for output (unset uses max(15% * window, 16384))."
+
+[[settings]]
+key = "compaction.keep_recent_tokens"
+type = "integer"
+tab = "compaction"
+default = 20000
+description = "Target token budget of newest history kept verbatim during summary compaction."
+
+[[settings]]
+key = "compaction.mid_turn_enabled"
+type = "bool"
+tab = "compaction"
+default = true
+description = "Allow threshold compaction between steps of a single turn (false defers until post-turn)."
+
+[[settings]]
+key = "compaction.auto_continue"
+type = "bool"
+tab = "compaction"
+default = true
+description = "Automatically resume after compaction or recovery when compaction reduced context size."
+
+[[settings]]
+key = "compaction.async_enabled"
+type = "bool"
+tab = "compaction"
+default = true
+description = "Speculatively prepare a background compaction summary when approaching the compaction threshold."
+
+[[settings]]
+key = "compaction.method_order"
+type = "array"
+tab = "compaction"
+default = ["handoff", "shake", "summary"]
+description = "Ordered list of compaction methods tried until one commits (`soft` aliases `summary`)."
+
+[[settings]]
+key = "compaction.model_thresholds"
+type = "table"
+tab = "compaction"
+description = "Per-model compaction threshold overrides (`N`, `fN`, or `N%`; exact key or longest `provider/...*` prefix)."
+
+[[settings]]
+key = "compaction.idle.enabled"
+type = "bool"
+tab = "compaction"
+default = false
+description = "Enable automatic idle-session compaction after inactivity."
+
+[[settings]]
+key = "compaction.idle.threshold_tokens"
+type = "integer"
+tab = "compaction"
+default = 200000
+description = "Minimum estimated session tokens required before idle compaction triggers."
+
+[[settings]]
+key = "compaction.idle.timeout_secs"
+type = "integer"
+tab = "compaction"
+default = 300
+description = "Inactivity timeout in seconds before idle compaction runs (clamped to min 60s when enabled)."
+
+[[settings]]
+key = "share.store"
+type = "string"
+tab = "share"
+default = "blob"
+values = ["blob", "gist"]
+operator_no_loosen = true
+description = "Backend store for sealed session shares (`blob` posts to `share.server`; `gist` runs `gh gist create`)."
+
+[[settings]]
+key = "share.server"
+type = "string"
+tab = "share"
+default = ""
+env = "HRN_SHARE_SERVER"
+operator_no_loosen = true
+description = "Base URL of the blob server for `[share] store = \"blob\"` (e.g. local/LAN hrn-relay)."
+
+[[settings]]
+key = "share.redact"
+type = "bool"
+tab = "share"
+default = true
+operator_no_loosen = true
+description = "Redact secret patterns from shared session snapshots by default."
+
+[[settings]]
+key = "collab.relay"
+type = "string"
+tab = "collab"
+default = ""
+env = "HRN_COLLAB_RELAY"
+operator_no_loosen = true
+description = "Base URL of the live collaboration WebSocket relay (e.g. local/LAN hrn-relay)."

@@ -1,0 +1,21 @@
+# Auto-generated and lockfile globs refused when `[edit] block_auto_generated = true`.
+Cargo.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+composer.lock
+Gemfile.lock
+poetry.lock
+uv.lock
+flake.lock
+go.sum
+*.pb.rs
+*.pb.go
+*.pb.ts
+*.generated.*
+*.g.dart
+*.freezed.dart
+*.min.js
+*.min.css

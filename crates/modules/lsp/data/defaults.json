@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "lazy": true,
+  "diagnostics_on_write": true,
+  "diagnostics_on_edit": false,
+  "format_on_write": false,
+  "diagnostics_deduplicate": true,
+  "request_timeout_secs": 10,
+  "idle_timeout_secs": 300
+}

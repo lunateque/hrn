@@ -1,0 +1,16 @@
+[package]
+name = "hrn-mod-meta"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+hrn-kernel.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+hrn-kernel = { workspace = true, features = ["testing"] }
+tokio.workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "hrn-edge-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+bytes.workspace = true
+hrn-edge-http.workspace = true
+hrn-edge-proc.workspace = true
+hrn-kernel.workspace = true
+process-wrap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

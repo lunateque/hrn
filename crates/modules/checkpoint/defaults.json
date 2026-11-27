@@ -1,0 +1,6 @@
+{
+  "auto": true,
+  "timeout_secs": 60,
+  "tools": ["edit", "write", "apply_patch", "bash", "eval"],
+  "exclude": [".git/", ".hg/", ".svn/", "node_modules/", "target/", ".venv/", "__pycache__/", ".harness/wt/"]
+}

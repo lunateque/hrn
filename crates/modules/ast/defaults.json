@@ -1,0 +1,5 @@
+{
+  "max_matches": 50,
+  "max_files": 1000,
+  "discover": true
+}

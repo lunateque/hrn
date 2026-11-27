@@ -1,0 +1,68 @@
+# Embedded statusline presets and separator styles (`[tui.statusline]`).
+#
+# Supported segments:
+#   brand, model, fast, vim, goal, mode, agents, hook, path, branch, cost, tokens,
+#   reasoning, gauge, title
+
+[separators.powerline]
+inner = ">"
+left_cap = ""
+right_cap = ""
+
+[separators.powerline-thin]
+inner = ""
+left_cap = ""
+right_cap = ""
+
+[separators.slash]
+inner = "/"
+left_cap = ""
+right_cap = ""
+
+[separators.pipe]
+inner = "|"
+left_cap = ""
+right_cap = ""
+
+[separators.block]
+inner = "│"
+left_cap = "▌"
+right_cap = "▐"
+
+[separators.none]
+inner = ""
+left_cap = ""
+right_cap = ""
+
+[separators.ascii]
+inner = "|"
+left_cap = ""
+right_cap = ""
+
+[presets.default]
+left_segments = ["brand", "model", "goal", "mode", "agents", "path", "branch", "cost", "tokens"]
+right_segments = ["gauge", "title"]
+
+[presets.minimal]
+left_segments = ["brand", "model", "branch"]
+right_segments = []
+
+[presets.compact]
+left_segments = ["brand", "model", "mode", "path", "branch", "tokens"]
+right_segments = ["gauge"]
+
+[presets.full]
+left_segments = ["brand", "model", "fast", "vim", "goal", "mode", "agents", "hook", "path", "branch", "cost", "tokens"]
+right_segments = ["gauge", "title"]
+
+[presets.nerd]
+left_segments = ["brand", "model", "fast", "vim", "goal", "mode", "agents", "path", "branch", "cost", "tokens"]
+right_segments = ["gauge", "title"]
+
+[presets.ascii]
+left_segments = ["brand", "model", "mode", "path", "branch", "tokens"]
+right_segments = ["gauge", "title"]
+
+[presets.custom]
+left_segments = []
+right_segments = []

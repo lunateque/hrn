@@ -1,0 +1,61 @@
+# Native executable format tables (file-format constants, not project configuration).
+# Columns: group, numeric id (hex), display name.
+pe-machine	0x014c	x86 (i386)
+pe-machine	0x8664	x86-64
+pe-machine	0x01c0	ARM
+pe-machine	0x01c2	ARM thumb-2
+pe-machine	0x01c4	ARM NT
+pe-machine	0xaa64	ARM64
+pe-machine	0xa641	ARM64 (EC)
+pe-machine	0x0200	IA-64
+pe-machine	0x01f0	PowerPC
+pe-machine	0x01f1	PowerPC (FP)
+pe-machine	0x5032	RISC-V 32
+pe-machine	0x5064	RISC-V 64
+pe-machine	0x5128	RISC-V 128
+pe-machine	0x6232	LoongArch 32
+pe-machine	0x6264	LoongArch 64
+pe-machine	0x9248	EFI bytecode
+pe-subsystem	0x0000	unspecified
+pe-subsystem	0x0001	native
+pe-subsystem	0x0002	Windows GUI
+pe-subsystem	0x0003	Windows console
+pe-subsystem	0x0005	OS/2 console
+pe-subsystem	0x0007	POSIX console
+pe-subsystem	0x0008	Windows native
+pe-subsystem	0x0009	Windows GUI server
+pe-subsystem	0x000a	Windows console server
+pe-subsystem	0x000b	Xbox
+pe-subsystem	0x0010	EFI application
+pe-subsystem	0x0011	EFI boot-service driver
+pe-subsystem	0x0012	EFI runtime driver
+elf-type	0x0001	relocatable object
+elf-type	0x0002	executable
+elf-type	0x0003	shared object
+elf-type	0x0004	core dump
+elf-machine	0x0000	none
+elf-machine	0x0003	x86 (i386)
+elf-machine	0x0008	PA-RISC
+elf-machine	0x0014	S390 (IBM)
+elf-machine	0x0015	PowerPC
+elf-machine	0x0028	ARM
+elf-machine	0x002a	SuperH
+elf-machine	0x002e	SPARC
+elf-machine	0x0032	IA-64
+elf-machine	0x003e	x86-64
+elf-machine	0x0062	AArch64
+elf-machine	0x00f3	RISC-V
+elf-machine	0x00f7	loongarch64
+macho-type	0x0001	relocatable object
+macho-type	0x0002	execute
+macho-type	0x0003	dSYM companion
+macho-type	0x0004	core dump
+macho-type	0x0006	dynamic library
+macho-type	0x0007	bundle
+macho-type	0x0008	dynamic linker
+macho-cpu	0x00000007	x86
+macho-cpu	0x01000007	x86-64
+macho-cpu	0x0000000c	ARM
+macho-cpu	0x0100000c	ARM64
+macho-cpu	0x00000012	PowerPC
+macho-cpu	0x01000012	PowerPC 64

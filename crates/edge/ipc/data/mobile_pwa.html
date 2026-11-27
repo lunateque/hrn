@@ -1,0 +1,1658 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>hrn remote</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b0e14;--surface:#121721;--card:#171e2b;--card-alt:#1d2636;--line:#263144;
+  --fg:#e6edf3;--fg-dim:#8b98ab;--fg-mute:#647185;
+  --accent:#58a6ff;--accent-bg:rgba(88,166,255,.14);
+  --user-bg:#142844;--user-line:#244878;
+  --ok:#3fb950;--ok-bg:rgba(63,185,80,.14);
+  --err:#f85149;--err-bg:rgba(248,81,73,.14);
+  --warn:#d29922;--warn-bg:rgba(210,153,34,.16);
+  --think:#a371f7;--think-bg:rgba(163,113,247,.12);
+  --diff-add:rgba(63,185,80,.18);--diff-del:rgba(248,81,73,.18);--diff-hunk:rgba(88,166,255,.15);
+  --shadow:0 8px 28px rgba(0,0,0,.45);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f4f6f9;--surface:#ffffff;--card:#ffffff;--card-alt:#eef2f7;--line:#d5dde8;
+  --fg:#1b2230;--fg-dim:#576375;--fg-mute:#7b8798;
+  --accent:#0969da;--accent-bg:rgba(9,105,218,.1);
+  --user-bg:#dff0ff;--user-line:#a6d1ff;
+  --ok:#1a7f37;--ok-bg:rgba(26,127,55,.12);
+  --err:#cf222e;--err-bg:rgba(207,34,46,.11);
+  --warn:#9a6700;--warn-bg:rgba(154,103,0,.12);
+  --think:#8250df;--think-bg:rgba(130,80,223,.1);
+  --diff-add:rgba(26,127,55,.14);--diff-del:rgba(207,34,46,.14);--diff-hunk:rgba(9,105,218,.12);
+  --shadow:0 8px 24px rgba(15,23,42,.12);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none;padding:0}
+.app{display:flex;flex-direction:column;height:100%;height:100dvh;max-width:920px;margin:0 auto;position:relative;background:var(--bg)}
+.topbar{
+  display:flex;align-items:center;gap:10px;
+  padding:max(10px,env(safe-area-inset-top)) 12px 10px;
+  background:var(--surface);border-bottom:1px solid var(--line);flex-shrink:0;z-index:10;
+}
+.icon-btn{
+  width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--card-alt);color:var(--fg);font-size:17px;flex-shrink:0;border:1px solid var(--line);
+}
+.icon-btn:active{transform:scale(.95)}
+.title-col{min-width:0;flex:1}
+.title-row{display:flex;align-items:center;gap:6px}
+.title{font-weight:650;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subtitle{font-size:12px;color:var(--fg-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:600;border:1px solid var(--line);background:var(--card-alt);color:var(--fg-dim);flex-shrink:0;
+}
+.pill.live{color:var(--ok);border-color:rgba(63,185,80,.35);background:var(--ok-bg)}
+.pill.working{color:var(--accent);border-color:rgba(88,166,255,.4);background:var(--accent-bg)}
+.pill.blocked{color:var(--warn);border-color:rgba(210,153,34,.45);background:var(--warn-bg)}
+.pill.err{color:var(--err);border-color:rgba(248,81,73,.4);background:var(--err-bg)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+.pulse .dot{animation:pulse 1.3s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.banner{
+  padding:8px 14px;font-size:13px;background:var(--warn-bg);color:var(--warn);
+  border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;
+}
+.banner.err{background:var(--err-bg);color:var(--err)}
+.banner.info{background:var(--accent-bg);color:var(--accent)}
+.hidden{display:none!important}
+
+.feed-wrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.feed{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:14px 12px 24px;display:flex;flex-direction:column;gap:10px;
+}
+.empty-state{
+  margin:auto;text-align:center;color:var(--fg-dim);max-width:340px;padding:28px 16px;
+}
+.empty-state h2{margin:0 0 8px;font-size:18px;color:var(--fg)}
+.empty-state p{margin:0;font-size:14px}
+
+.msg{
+  border-radius:14px;padding:11px 13px;border:1px solid var(--line);
+  background:var(--card);word-wrap:break-word;overflow-wrap:anywhere;
+}
+.msg.user{
+  background:var(--user-bg);border-color:var(--user-line);
+  margin-left:24px;align-self:flex-end;max-width:min(92%,680px);
+}
+.msg.assistant{margin-right:8px}
+.msg-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-dim);margin-bottom:5px;
+}
+.md p{margin:0 0 8px}
+.md p:last-child{margin-bottom:0}
+.md h1,.md h2,.md h3,.md h4{margin:10px 0 6px;line-height:1.3}
+.md h1{font-size:1.2rem}.md h2{font-size:1.1rem}.md h3{font-size:1rem}
+.md ul,.md ol{margin:4px 0 8px;padding-left:20px}
+.md li{margin:2px 0}
+.md blockquote{margin:6px 0;padding:4px 10px;border-left:3px solid var(--accent);color:var(--fg-dim);background:var(--card-alt);border-radius:0 8px 8px 0}
+.md code{font-family:var(--mono);font-size:.87em;background:var(--card-alt);padding:1px 5px;border-radius:5px;border:1px solid var(--line)}
+.md a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.code-wrap{margin:8px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.code-bar{
+  display:flex;align-items:center;justify-content:space-between;padding:5px 10px;
+  background:var(--card-alt);border-bottom:1px solid var(--line);font-size:11px;color:var(--fg-dim);font-family:var(--mono);
+}
+.copy-btn{
+  padding:3px 9px;border-radius:6px;background:var(--card);border:1px solid var(--line);
+  color:var(--fg);font-size:11px;font-family:var(--sans);font-weight:600;
+}
+.copy-btn:active{opacity:.75}
+.code-wrap pre,.raw-pre{
+  margin:0;padding:10px;overflow-x:auto;font:12.5px/1.45 var(--mono);
+  white-space:pre-wrap;word-break:break-word;
+}
+
+details.card-det{
+  border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;
+}
+details.card-det.think{border-color:rgba(163,113,247,.35);background:var(--think-bg)}
+details.card-det.tool-err{border-color:rgba(248,81,73,.45)}
+details.card-det>summary{
+  list-style:none;display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;
+  font-size:13px;user-select:none;
+}
+details.card-det>summary::-webkit-details-marker{display:none}
+.tool-icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700}
+.tool-icon.run::after{content:"";width:12px;height:12px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .75s linear infinite}
+.tool-icon.ok{color:var(--ok)}
+.tool-icon.err{color:var(--err)}
+.tool-name{font-family:var(--mono);font-size:12px;font-weight:650;padding:1px 7px;border-radius:6px;background:var(--card-alt);border:1px solid var(--line);flex-shrink:0}
+.tool-target{color:var(--fg-dim);font-family:var(--mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.det-body{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.sec-lbl{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-dim)}
+.diff-box{font:12px/1.45 var(--mono);border-radius:8px;overflow-x:auto;border:1px solid var(--line);background:var(--surface)}
+.diff-line{padding:0 8px;white-space:pre-wrap;word-break:break-word}
+.diff-line.add{background:var(--diff-add);color:var(--ok)}
+.diff-line.del{background:var(--diff-del);color:var(--err)}
+.diff-line.hunk{background:var(--diff-hunk);color:var(--accent);font-weight:600}
+
+.note-pill{
+  align-self:center;font-size:12px;color:var(--fg-dim);background:var(--card-alt);
+  border:1px solid var(--line);border-radius:999px;padding:4px 12px;max-width:95%;
+}
+.note-pill.steer{color:var(--accent);border-color:rgba(88,166,255,.35);background:var(--accent-bg)}
+.note-pill.err{color:var(--err);border-color:rgba(248,81,73,.4);background:var(--err-bg)}
+.thumb{max-width:220px;max-height:180px;border-radius:8px;border:1px solid var(--line);margin-top:6px;display:block}
+.todo-item{display:flex;align-items:flex-start;gap:7px;font-size:13px;padding:2px 0}
+
+.jump-btn{
+  position:absolute;right:14px;bottom:14px;padding:8px 13px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--accent);color:var(--accent);
+  font-size:12px;font-weight:650;box-shadow:var(--shadow);z-index:5;
+}
+
+.sheet{
+  background:var(--surface);border-top:2px solid var(--warn);
+  padding:12px 14px;display:flex;flex-direction:column;gap:10px;
+  max-height:48dvh;overflow-y:auto;flex-shrink:0;box-shadow:0 -8px 24px rgba(0,0,0,.35);
+}
+.sheet.ask{border-top-color:var(--accent)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:650;font-size:14px}
+.sheet-cmd{
+  font:12.5px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:9px 10px;max-height:110px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+}
+.sheet-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  min-height:44px;padding:0 15px;border-radius:11px;font-weight:650;font-size:14px;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1;min-width:92px;
+  border:1px solid var(--line);background:var(--card-alt);color:var(--fg);
+}
+.btn:active{transform:scale(.97)}
+.btn.ok{background:var(--ok);color:#061409;border-color:transparent}
+.btn.accent{background:var(--accent);color:#061221;border-color:transparent}
+.btn.danger{background:var(--err);color:#fff;border-color:transparent}
+.btn.ghost{background:var(--card-alt);color:var(--fg)}
+
+.ask-field{display:flex;flex-direction:column;gap:6px}
+.ask-q{font-size:13.5px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  min-height:38px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:550;
+  border:1px solid var(--line);background:var(--card);color:var(--fg);
+}
+.chip.sel{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);font-weight:650}
+.field-in{
+  width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+  background:var(--bg);color:var(--fg);min-height:42px;
+}
+
+.composer{
+  background:var(--surface);border-top:1px solid var(--line);
+  padding:10px 12px max(10px,env(safe-area-inset-bottom));
+  display:flex;align-items:flex-end;gap:8px;flex-shrink:0;
+}
+.composer textarea{
+  flex:1;min-height:44px;max-height:140px;resize:none;padding:10px 12px;
+  border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);
+  line-height:1.4;outline:none;
+}
+.composer textarea:focus{border-color:var(--accent)}
+.send-btn,.stop-btn{
+  height:44px;padding:0 15px;border-radius:12px;font-weight:650;font-size:14px;flex-shrink:0;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.send-btn{background:var(--accent);color:#061221}
+.send-btn:disabled{opacity:.45}
+.stop-btn{background:var(--err);color:#fff}
+.readonly-bar{
+  width:100%;text-align:center;font-size:13px;color:var(--fg-dim);padding:6px 8px;
+  background:var(--card-alt);border-radius:10px;border:1px solid var(--line);
+}
+
+.drawer-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:flex;
+}
+.drawer{
+  width:min(86vw,340px);height:100%;background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);box-shadow:var(--shadow);
+}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.drawer-search{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.drawer-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.sess-item{
+  text-align:left;width:100%;padding:10px 11px;border-radius:11px;border:1px solid var(--line);
+  background:var(--card);display:flex;flex-direction:column;gap:3px;
+}
+.sess-item.active{border-color:var(--accent);background:var(--accent-bg)}
+.sess-top{display:flex;align-items:center;gap:6px;font-weight:600;font-size:14px}
+.sess-meta{font-size:11.5px;color:var(--fg-dim);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.new-form{padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;background:var(--card-alt)}
+
+.pair-screen{
+  flex:1;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;
+}
+.pair-card{
+  width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);
+  border-radius:18px;padding:22px 18px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);
+}
+.pair-card h1{margin:0;font-size:20px;display:flex;align-items:center;gap:8px}
+.pair-card p{margin:0;font-size:14px;color:var(--fg-dim)}
+.pair-err{color:var(--err)}
+.toast{
+  position:fixed;top:max(56px,calc(env(safe-area-inset-top) + 52px));left:50%;transform:translateX(-50%);
+  background:var(--card-alt);border:1px solid var(--line);color:var(--fg);padding:8px 14px;
+  border-radius:999px;font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:60;max-width:90vw;
+}
+.toast.err{border-color:var(--err);color:var(--err);background:var(--surface)}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <button class="icon-btn hidden" id="menuBtn" type="button" aria-label="Sessions">☰</button>
+    <div class="title-col">
+      <div class="title-row">
+        <span class="title" id="titleEl">hrn remote</span>
+        <span class="pill" id="rolePill"></span>
+      </div>
+      <div class="subtitle" id="subEl">Pocket supervision</div>
+    </div>
+    <span class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">Idle</span></span>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <div class="banner hidden" id="bannerEl"></div>
+
+  <section class="pair-screen hidden" id="pairScreen">
+    <div class="pair-card">
+      <h1>hrn remote</h1>
+      <p>Scan the QR code from <code>hrn remote pair</code> or paste a pairing code or room link below.</p>
+      <input class="field-in" id="pairInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Pairing code or /r/<room>#<key> link">
+      <button class="btn accent" id="pairSubmitBtn" type="button">Connect</button>
+      <p id="pairErr" class="hidden pair-err"></p>
+    </div>
+  </section>
+
+  <div class="feed-wrap hidden" id="mainWrap">
+    <main class="feed" id="feed"></main>
+    <button class="jump-btn hidden" id="jumpBtn" type="button">↓ Latest</button>
+  </div>
+
+  <section class="sheet hidden" id="approvalSheet"></section>
+  <section class="sheet ask hidden" id="askSheet"></section>
+
+  <footer class="composer hidden" id="composer">
+    <textarea id="promptInput" rows="1" placeholder="Message agent…"></textarea>
+    <button class="stop-btn hidden" id="stopBtn" type="button">Stop</button>
+    <button class="send-btn" id="sendBtn" type="button">Send</button>
+  </footer>
+</div>
+
+<div class="drawer-backdrop hidden" id="drawerBackdrop">
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <strong>Sessions</strong>
+      <button class="icon-btn" id="drawerCloseBtn" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-search">
+      <input class="field-in" id="sessSearch" type="search" placeholder="Search sessions…">
+      <button class="btn accent hidden" id="newSessToggleBtn" type="button">+ New Session</button>
+    </div>
+    <div class="new-form hidden" id="newSessForm">
+      <input class="field-in" id="newTitleIn" type="text" placeholder="Session title">
+      <input class="field-in" id="newCwdIn" type="text" placeholder="Working directory (e.g. .)">
+      <input class="field-in" id="newModelIn" type="text" placeholder="Model (optional)">
+      <button class="btn ok" id="newSessCreateBtn" type="button">Create</button>
+    </div>
+    <div class="drawer-list" id="sessList"></div>
+  </aside>
+</div>
+
+<div class="toast hidden" id="toastEl"></div>
+
+<script>
+(function(){
+"use strict";
+const MAX_UNSEALED = 16 * 1024 * 1024;
+const TOKEN_KEY = "hrn_mobile_token";
+const THEME_KEY = "hrn_mobile_theme";
+
+const $ = (id) => document.getElementById(id);
+const menuBtn = $("menuBtn"), titleEl = $("titleEl"), rolePill = $("rolePill"), subEl = $("subEl");
+const statusPill = $("statusPill"), statusTxt = $("statusTxt"), themeBtn = $("themeBtn");
+const bannerEl = $("bannerEl"), pairScreen = $("pairScreen"), pairInput = $("pairInput");
+const pairSubmitBtn = $("pairSubmitBtn"), pairErr = $("pairErr");
+const mainWrap = $("mainWrap"), feed = $("feed"), jumpBtn = $("jumpBtn");
+const approvalSheet = $("approvalSheet"), askSheet = $("askSheet");
+const composer = $("composer"), promptInput = $("promptInput"), stopBtn = $("stopBtn"), sendBtn = $("sendBtn");
+const drawerBackdrop = $("drawerBackdrop"), drawerCloseBtn = $("drawerCloseBtn");
+const sessSearch = $("sessSearch"), sessList = $("sessList");
+const newSessToggleBtn = $("newSessToggleBtn"), newSessForm = $("newSessForm");
+const newTitleIn = $("newTitleIn"), newCwdIn = $("newCwdIn"), newModelIn = $("newModelIn"), newSessCreateBtn = $("newSessCreateBtn");
+const toastEl = $("toastEl");
+
+const state = {
+  transport: null, // "direct" | "relay"
+  token: null,
+  role: "view", // "control" | "view"
+  host: null,
+  sessions: [],
+  sessionId: null,
+  busy: false,
+  model: "",
+  agentStatus: "idle",
+  connected: false,
+  autoScroll: true,
+  sseAbort: null,
+  sseDelay: 1000,
+  relay: { room: null, key: null, writeToken: null, ws: null, chunks: null, expectedChunks: 0, closed: false, delay: 1000 },
+  pendingApprovals: [],
+  pendingAsks: [],
+  toolCards: new Map(),
+  seenNodeIds: new Set(),
+  stream: { thinkingEl: null, thinkingPre: null, thinkingDet: null, textBox: null, textMd: null, textRaw: "", rafPending: false },
+  lastOptimisticUser: null,
+};
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = String(text);
+  return n;
+}
+
+function clearEl(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+let toastTimer = null;
+function showToast(msg, isErr) {
+  toastEl.textContent = msg;
+  toastEl.className = isErr ? "toast err" : "toast";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.add("hidden"), 3200);
+}
+
+function setBanner(msg, kind) {
+  if (!msg) { bannerEl.classList.add("hidden"); bannerEl.textContent = ""; return; }
+  bannerEl.textContent = msg;
+  bannerEl.className = "banner" + (kind ? " " + kind : "");
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "light" || saved === "dark") {
+    document.documentElement.dataset.theme = saved;
+  } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+    document.documentElement.dataset.theme = "light";
+  }
+  themeBtn.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem(THEME_KEY, next);
+  });
+}
+
+function updateHeader() {
+  const isCtrl = state.role === "control";
+  rolePill.textContent = isCtrl ? "Control" : "View";
+  rolePill.className = "pill" + (isCtrl ? " live" : "");
+  const hasDrawer = state.transport === "direct" && state.host && state.host.mode === "daemon";
+  menuBtn.classList.toggle("hidden", !hasDrawer);
+  newSessToggleBtn.classList.toggle("hidden", !isCtrl);
+
+  let cls = "pill";
+  let txt = "Idle";
+  if (!state.connected) { cls += " blocked pulse"; txt = "Reconnecting"; }
+  else if (state.pendingApprovals.length > 0 || state.pendingAsks.length > 0 || state.agentStatus === "blocked") {
+    cls += " blocked pulse"; txt = "Needs input";
+  } else if (state.busy || state.agentStatus === "working") {
+    cls += " working pulse"; txt = "Working";
+  } else if (state.agentStatus === "error") {
+    cls += " err"; txt = "Error";
+  } else {
+    cls += " live"; txt = "Live";
+  }
+  statusPill.className = cls;
+  statusTxt.textContent = txt;
+
+  const parts = [];
+  if (state.model) parts.push(state.model);
+  if (state.host && state.host.host_name) parts.push(state.host.host_name);
+  if (state.transport === "relay" && state.relay.room) parts.push("E2E room");
+  subEl.textContent = parts.join(" · ") || "Pocket supervision";
+
+  updateComposer();
+}
+
+function updateComposer() {
+  if (!state.transport) { composer.classList.add("hidden"); return; }
+  composer.classList.remove("hidden");
+  const isCtrl = state.role === "control";
+  const ro = composer.querySelector(".readonly-bar");
+  if (!isCtrl) {
+    promptInput.classList.add("hidden");
+    sendBtn.classList.add("hidden");
+    stopBtn.classList.add("hidden");
+    if (!ro) composer.appendChild(el("div", "readonly-bar", "View-only session — live updates enabled"));
+    return;
+  }
+  if (ro) ro.remove();
+  promptInput.classList.remove("hidden");
+  sendBtn.classList.remove("hidden");
+  stopBtn.classList.toggle("hidden", !state.busy);
+  promptInput.placeholder = state.busy ? "Steer running agent…" : "Message agent…";
+  sendBtn.textContent = state.busy ? "Steer" : "Send";
+}
+
+function scrollToBottom(force) {
+  if (!force && !state.autoScroll) return;
+  feed.scrollTop = feed.scrollHeight;
+  jumpBtn.classList.add("hidden");
+}
+
+feed.addEventListener("scroll", () => {
+  const dist = feed.scrollHeight - feed.scrollTop - feed.clientHeight;
+  state.autoScroll = dist < 110;
+  jumpBtn.classList.toggle("hidden", state.autoScroll);
+});
+jumpBtn.addEventListener("click", () => { state.autoScroll = true; scrollToBottom(true); });
+
+// ---- Safe DOM Markdown Renderer (pure DOM nodes only) ----
+function renderInline(parent, text) {
+  const re = /(`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+))/g;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+    const tok = m[0];
+    if (tok.startsWith("`")) {
+      parent.appendChild(el("code", "", tok.slice(1, -1)));
+    } else if (tok.startsWith("**")) {
+      parent.appendChild(el("strong", "", tok.slice(2, -2)));
+    } else if (tok.startsWith("*")) {
+      parent.appendChild(el("em", "", tok.slice(1, -1)));
+    } else if (m[2] && m[3]) {
+      const a = el("a", "", m[2]);
+      a.href = m[3]; a.target = "_blank"; a.rel = "noopener noreferrer";
+      parent.appendChild(a);
+    } else if (m[4]) {
+      const a = el("a", "", m[4]);
+      a.href = m[4]; a.target = "_blank"; a.rel = "noopener noreferrer";
+      parent.appendChild(a);
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+}
+
+function makeCodeBlock(lang, code) {
+  const wrap = el("div", "code-wrap");
+  const bar = el("div", "code-bar");
+  bar.appendChild(el("span", "", lang || "code"));
+  const cp = el("button", "copy-btn", "Copy");
+  cp.type = "button";
+  cp.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      cp.textContent = "Copied";
+      setTimeout(() => { cp.textContent = "Copy"; }, 1400);
+    } catch (_) { showToast("Copy failed", true); }
+  });
+  bar.appendChild(cp);
+  wrap.appendChild(bar);
+  wrap.appendChild(el("pre", "", code));
+  return wrap;
+}
+
+function renderMarkdown(container, src) {
+  clearEl(container);
+  const lines = String(src || "").replace(/\r\n/g, "\n").split("\n");
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const fence = line.match(/^```([\w.+-]*)\s*$/);
+    if (fence) {
+      const lang = fence[1] || "";
+      const buf = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) { buf.push(lines[i]); i++; }
+      if (i < lines.length) i++;
+      container.appendChild(makeCodeBlock(lang, buf.join("\n")));
+      continue;
+    }
+    const h = line.match(/^(#{1,4})\s+(.+)$/);
+    if (h) {
+      const hn = el("h" + h[1].length);
+      renderInline(hn, h[2]);
+      container.appendChild(hn);
+      i++; continue;
+    }
+    if (/^\s*[-*•]\s+/.test(line)) {
+      const ul = el("ul");
+      while (i < lines.length && /^\s*[-*•]\s+/.test(lines[i])) {
+        const li = el("li");
+        renderInline(li, lines[i].replace(/^\s*[-*•]\s+/, ""));
+        ul.appendChild(li);
+        i++;
+      }
+      container.appendChild(ul);
+      continue;
+    }
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const ol = el("ol");
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+        const li = el("li");
+        renderInline(li, lines[i].replace(/^\s*\d+\.\s+/, ""));
+        ol.appendChild(li);
+        i++;
+      }
+      container.appendChild(ol);
+      continue;
+    }
+    if (line.startsWith("> ")) {
+      const bq = el("blockquote");
+      const parts = [];
+      while (i < lines.length && lines[i].startsWith("> ")) { parts.push(lines[i].slice(2)); i++; }
+      renderInline(bq, parts.join("\n"));
+      container.appendChild(bq);
+      continue;
+    }
+    if (!line.trim()) { i++; continue; }
+    const para = [];
+    while (i < lines.length && lines[i].trim() && !lines[i].startsWith("```") && !/^#{1,4}\s+/.test(lines[i]) && !/^\s*[-*•]\s+/.test(lines[i]) && !/^\s*\d+\.\s+/.test(lines[i]) && !lines[i].startsWith("> ")) {
+      para.push(lines[i]); i++;
+    }
+    const p = el("p");
+    renderInline(p, para.join("\n"));
+    container.appendChild(p);
+  }
+}
+
+function renderDiffBox(diffText) {
+  const box = el("div", "diff-box");
+  for (const line of String(diffText || "").split("\n")) {
+    let cls = "diff-line";
+    if (line.startsWith("@@")) cls += " hunk";
+    else if (line.startsWith("+") && !line.startsWith("+++")) cls += " add";
+    else if (line.startsWith("-") && !line.startsWith("---")) cls += " del";
+    box.appendChild(el("div", cls, line));
+  }
+  return box;
+}
+
+function summarizeToolArgs(rawArgs) {
+  if (!rawArgs) return "";
+  try {
+    const obj = typeof rawArgs === "string" ? JSON.parse(rawArgs) : rawArgs;
+    if (obj && typeof obj === "object") {
+      for (const k of ["command", "cmd", "path", "file_path", "target", "pattern", "query", "url", "name"]) {
+        if (typeof obj[k] === "string" && obj[k].trim()) {
+          const s = obj[k].trim().replace(/\s+/g, " ");
+          return s.length > 72 ? s.slice(0, 72) + "…" : s;
+        }
+      }
+    }
+  } catch (_) {}
+  const clean = String(rawArgs).replace(/\s+/g, " ").trim();
+  return clean.length > 64 ? clean.slice(0, 64) + "…" : clean;
+}
+
+function prettyJson(raw) {
+  if (!raw) return "";
+  try { return JSON.stringify(JSON.parse(raw), null, 2); } catch (_) { return String(raw); }
+}
+
+function safeImageNode(att) {
+  if (!att || typeof att !== "object") return null;
+  const mt = String(att.media_type || "");
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(mt)) return null;
+  const b64 = String(att.data_base64 || "").replace(/\s+/g, "");
+  if (!b64 || !/^[A-Za-z0-9+/=]+$/.test(b64)) return null;
+  const img = document.createElement("img");
+  img.className = "thumb";
+  img.alt = att.label || "attachment";
+  img.src = "data:" + mt + ";base64," + b64;
+  return img;
+}
+
+function removeEmptyState() {
+  const empty = feed.querySelector(".empty-state");
+  if (empty) empty.remove();
+}
+
+function ensureEmptyState() {
+  if (feed.children.length === 0) {
+    const box = el("div", "empty-state");
+    box.appendChild(el("h2", "", "Ready for supervision"));
+    box.appendChild(el("p", "", "Live agent messages, tool diffs, and approval prompts will stream here."));
+    feed.appendChild(box);
+  }
+}
+
+function appendUserBubble(text, images) {
+  removeEmptyState();
+  const box = el("div", "msg user");
+  const head = el("div", "msg-head");
+  head.appendChild(el("span", "", "You"));
+  box.appendChild(head);
+  box.appendChild(el("pre", "raw-pre", text || ""));
+  if (Array.isArray(images)) {
+    for (const att of images) {
+      const img = safeImageNode(att);
+      if (img) box.appendChild(img);
+    }
+  }
+  feed.appendChild(box);
+  scrollToBottom(false);
+}
+
+function appendThinkingCard(reasoning, live) {
+  removeEmptyState();
+  const det = el("details", "card-det think");
+  const sum = el("summary");
+  const icon = el("span", "tool-icon" + (live ? " run" : ""));
+  if (!live) icon.textContent = "✦";
+  sum.appendChild(icon);
+  sum.appendChild(el("span", "", live ? "Thinking…" : "Reasoning"));
+  det.appendChild(sum);
+  const body = el("div", "det-body");
+  const pre = el("pre", "raw-pre", reasoning || "");
+  body.appendChild(pre);
+  det.appendChild(body);
+  feed.appendChild(det);
+  scrollToBottom(false);
+  return { det, icon, sum, pre };
+}
+
+function appendAssistantBubble(markdownText) {
+  removeEmptyState();
+  const box = el("div", "msg assistant");
+  const head = el("div", "msg-head");
+  head.appendChild(el("span", "", "Assistant"));
+  box.appendChild(head);
+  const md = el("div", "md");
+  renderMarkdown(md, markdownText);
+  box.appendChild(md);
+  feed.appendChild(box);
+  scrollToBottom(false);
+  return { box, md };
+}
+
+function upsertToolCard(callId, name, argsRaw, running) {
+  removeEmptyState();
+  let card = callId ? state.toolCards.get(callId) : null;
+  if (!card) {
+    const det = el("details", "card-det");
+    const sum = el("summary");
+    const icon = el("span", "tool-icon " + (running ? "run" : "ok"));
+    if (!running) icon.textContent = "✓";
+    const nameEl = el("span", "tool-name", name || "tool");
+    const targetEl = el("span", "tool-target", summarizeToolArgs(argsRaw));
+    sum.appendChild(icon); sum.appendChild(nameEl); sum.appendChild(targetEl);
+    det.appendChild(sum);
+
+    const body = el("div", "det-body");
+    const argsSec = el("div");
+    argsSec.appendChild(el("div", "sec-lbl", "Arguments"));
+    const argsPre = el("pre", "raw-pre", prettyJson(argsRaw));
+    argsSec.appendChild(argsPre);
+    body.appendChild(argsSec);
+
+    const outSec = el("div", "hidden");
+    outSec.appendChild(el("div", "sec-lbl", "Output"));
+    const outPre = el("pre", "raw-pre", "");
+    outSec.appendChild(outPre);
+    body.appendChild(outSec);
+
+    const diffSec = el("div", "hidden");
+    body.appendChild(diffSec);
+
+    const imgSec = el("div");
+    body.appendChild(imgSec);
+
+    det.appendChild(body);
+    feed.appendChild(det);
+    card = { det, icon, nameEl, targetEl, argsSec, argsPre, outSec, outPre, diffSec, imgSec };
+    if (callId) state.toolCards.set(callId, card);
+    if (!argsRaw) argsSec.classList.add("hidden");
+    scrollToBottom(false);
+  }
+  return card;
+}
+
+function finishToolCard(callId, name, output, isError, diff, images) {
+  const card = upsertToolCard(callId, name, "", false);
+  card.icon.className = "tool-icon " + (isError ? "err" : "ok");
+  card.icon.textContent = isError ? "✗" : "✓";
+  card.det.classList.toggle("tool-err", Boolean(isError));
+  if (output !== undefined && output !== null && String(output).length > 0) {
+    card.outSec.classList.remove("hidden");
+    card.outPre.textContent = String(output);
+  }
+  if (diff) {
+    clearEl(card.diffSec);
+    card.diffSec.classList.remove("hidden");
+    card.diffSec.appendChild(el("div", "sec-lbl", "Diff"));
+    card.diffSec.appendChild(renderDiffBox(diff));
+  }
+  if (Array.isArray(images)) {
+    for (const att of images) {
+      const img = safeImageNode(att);
+      if (img) card.imgSec.appendChild(img);
+    }
+  }
+  scrollToBottom(false);
+}
+
+function appendTodoCard(phases) {
+  if (!Array.isArray(phases) || phases.length === 0) return;
+  removeEmptyState();
+  const det = el("details", "card-det");
+  const sum = el("summary");
+  sum.appendChild(el("span", "tool-icon ok", "☑"));
+  sum.appendChild(el("span", "", "Tasks"));
+  det.appendChild(sum);
+  const body = el("div", "det-body");
+  const glyph = { pending: "☐", in_progress: "◐", completed: "☑", abandoned: "⊘" };
+  for (const ph of phases) {
+    if (ph.name) body.appendChild(el("div", "sec-lbl", ph.name));
+    for (const t of (ph.tasks || [])) {
+      const row = el("div", "todo-item");
+      row.appendChild(el("span", "", glyph[t.status] || "☐"));
+      row.appendChild(el("span", "", t.content || ""));
+      body.appendChild(row);
+    }
+  }
+  det.appendChild(body);
+  feed.appendChild(det);
+  scrollToBottom(false);
+}
+
+function finalizeStreamSlot() {
+  if (state.stream.thinkingDet) {
+    const sum = state.stream.thinkingDet.querySelector("summary");
+    if (sum) {
+      clearEl(sum);
+      sum.appendChild(el("span", "tool-icon", "✦"));
+      sum.appendChild(el("span", "", "Reasoning"));
+    }
+  }
+  if (state.stream.textMd && state.stream.textRaw) {
+    renderMarkdown(state.stream.textMd, state.stream.textRaw);
+  }
+  state.stream = { thinkingEl: null, thinkingPre: null, thinkingDet: null, textBox: null, textMd: null, textRaw: "", rafPending: false };
+}
+
+function renderDagNode(node) {
+  if (!node || typeof node !== "object") return;
+  if (node.id && state.seenNodeIds.has(node.id)) return;
+  if (node.id) state.seenNodeIds.add(node.id);
+  const p = node.payload;
+  if (!p || typeof p !== "object") return;
+
+  if (p.kind === "message" && p.msg) {
+    const msg = p.msg;
+    if (msg.role === "user") {
+      if (state.lastOptimisticUser && state.lastOptimisticUser === msg.content) {
+        state.lastOptimisticUser = null;
+        return;
+      }
+      appendUserBubble(msg.content || "", msg.images);
+    } else if (msg.role === "assistant") {
+      finalizeStreamSlot();
+      if (msg.reasoning) appendThinkingCard(msg.reasoning, false);
+      if (msg.content) appendAssistantBubble(msg.content);
+      if (Array.isArray(msg.tool_calls)) {
+        for (const call of msg.tool_calls) {
+          upsertToolCard(call.id, call.name, call.arguments, false);
+        }
+      }
+    } else if (msg.role === "tool") {
+      finishToolCard(msg.tool_call_id, msg.tool_name || "tool", msg.content || "", Boolean(msg.is_error), null, msg.images);
+    }
+  } else if (p.kind === "summary" || p.kind === "branch_summary") {
+    const det = el("details", "card-det");
+    const sum = el("summary");
+    sum.appendChild(el("span", "tool-icon", "◈"));
+    sum.appendChild(el("span", "", p.kind === "summary" ? "Compacted summary" : "Branch summary"));
+    det.appendChild(sum);
+    const body = el("div", "det-body");
+    body.appendChild(el("pre", "raw-pre", p.text || ""));
+    det.appendChild(body);
+    feed.appendChild(det);
+  } else if (p.kind === "fork_marker") {
+    feed.appendChild(el("div", "note-pill", "Fork: " + (p.label || "")));
+  } else if (p.kind === "model_change") {
+    if (p.selector) state.model = p.selector;
+    feed.appendChild(el("div", "note-pill", "Model → " + (p.selector || "")));
+    updateHeader();
+  } else if (p.kind === "label" && p.label) {
+    feed.appendChild(el("div", "note-pill", "Label: " + p.label));
+  } else if (p.kind === "todo_board") {
+    appendTodoCard(p.phases);
+  } else if (p.kind === "session_exit" && p.reason && p.reason !== "normal") {
+    feed.appendChild(el("div", "note-pill err", "Turn ended: " + p.reason));
+  }
+}
+
+function handleAgentEvent(ev) {
+  if (!ev || typeof ev !== "object") return;
+  switch (ev.type) {
+    case "status_changed":
+      state.agentStatus = ev.status || "idle";
+      state.busy = ev.status === "working" || ev.status === "blocked";
+      updateHeader();
+      break;
+    case "turn_start":
+      state.busy = true;
+      state.agentStatus = "working";
+      finalizeStreamSlot();
+      if (ev.user_text && state.lastOptimisticUser !== ev.user_text) {
+        appendUserBubble(ev.user_text);
+      }
+      state.lastOptimisticUser = null;
+      updateHeader();
+      break;
+    case "steer_injected":
+      feed.appendChild(el("div", "note-pill steer", "Steered: " + (ev.text || "")));
+      scrollToBottom(false);
+      break;
+    case "thinking_delta":
+      if (!state.stream.thinkingDet) {
+        const t = appendThinkingCard("", true);
+        state.stream.thinkingDet = t.det;
+        state.stream.thinkingPre = t.pre;
+      }
+      state.stream.thinkingPre.textContent += String(ev.delta || "");
+      scrollToBottom(false);
+      break;
+    case "text_delta":
+      if (!state.stream.textBox) {
+        const b = appendAssistantBubble("");
+        state.stream.textBox = b.box;
+        state.stream.textMd = b.md;
+        state.stream.textRaw = "";
+      }
+      state.stream.textRaw += String(ev.delta || "");
+      if (!state.stream.rafPending) {
+        state.stream.rafPending = true;
+        requestAnimationFrame(() => {
+          state.stream.rafPending = false;
+          if (state.stream.textMd) renderMarkdown(state.stream.textMd, state.stream.textRaw);
+          scrollToBottom(false);
+        });
+      }
+      break;
+    case "tool_start":
+      finalizeStreamSlot();
+      upsertToolCard(ev.call_id, ev.name, ev.arguments, true);
+      break;
+    case "tool_delta": {
+      const card = upsertToolCard(ev.call_id, "tool", "", true);
+      card.outSec.classList.remove("hidden");
+      card.outPre.textContent += String(ev.delta || "");
+      scrollToBottom(false);
+      break;
+    }
+    case "tool_done":
+      finishToolCard(ev.call_id, ev.name, ev.output, Boolean(ev.is_error), ev.diff, ev.images);
+      if (state.pendingAsks.length > 0) {
+        if (state.pendingAsks.some((a) => a.id === ev.call_id)) {
+          state.pendingAsks = state.pendingAsks.filter((a) => a.id !== ev.call_id);
+          renderAskSheet();
+          updateHeader();
+        } else if (ev.name === "ask") {
+          state.pendingAsks.shift();
+          renderAskSheet();
+          updateHeader();
+        }
+      }
+      break;
+    case "approval_requested":
+      if (ev.request && !state.pendingApprovals.some((a) => a.id === ev.request.id)) {
+        state.pendingApprovals.push(ev.request);
+        renderApprovalSheet();
+        updateHeader();
+      }
+      break;
+    case "approval_resolved":
+      state.pendingApprovals = state.pendingApprovals.filter((a) => a.id !== ev.id);
+      renderApprovalSheet();
+      feed.appendChild(el("div", "note-pill", ev.approved ? "Approved tool call" : "Denied tool call"));
+      updateHeader();
+      scrollToBottom(false);
+      break;
+    case "ask_requested":
+      if (ev.request && !state.pendingAsks.some((a) => a.id === ev.request.id)) {
+        state.pendingAsks.push(ev.request);
+        renderAskSheet();
+        updateHeader();
+      }
+      break;
+    case "todos_updated":
+      appendTodoCard(ev.phases);
+      break;
+    case "llm_call":
+      if (ev.model) { state.model = ev.model; updateHeader(); }
+      break;
+    case "compacted":
+      feed.appendChild(el("div", "note-pill", "Compacted context (" + (ev.method || "summary") + ")"));
+      scrollToBottom(false);
+      break;
+    case "assistant_note":
+      if (ev.text) appendAssistantBubble(ev.text);
+      break;
+    case "advisor_note": {
+      const det = el("details", "card-det");
+      const sum = el("summary");
+      sum.appendChild(el("span", "tool-icon", "★"));
+      sum.appendChild(el("span", "", "Advisor (" + (ev.model || "review") + ")"));
+      det.appendChild(sum);
+      const body = el("div", "det-body");
+      body.appendChild(el("pre", "raw-pre", ev.note || ""));
+      det.appendChild(body);
+      feed.appendChild(det);
+      scrollToBottom(false);
+      break;
+    }
+    case "goal_updated":
+      if (ev.goal && ev.goal.objective) {
+        feed.appendChild(el("div", "note-pill", "Goal: " + ev.goal.objective));
+        scrollToBottom(false);
+      }
+      break;
+    case "turn_done":
+      if (!state.stream.textBox && ev.text) {
+        appendAssistantBubble(ev.text);
+      } else {
+        finalizeStreamSlot();
+      }
+      if (ev.model) state.model = ev.model;
+      state.busy = false;
+      state.agentStatus = "idle";
+      if (state.pendingApprovals.length > 0) { state.pendingApprovals = []; renderApprovalSheet(); }
+      if (state.pendingAsks.length > 0) { state.pendingAsks = []; renderAskSheet(); }
+      updateHeader();
+      scrollToBottom(false);
+      break;
+    case "turn_error":
+      finalizeStreamSlot();
+      state.busy = false;
+      state.agentStatus = "error";
+      if (state.pendingApprovals.length > 0) { state.pendingApprovals = []; renderApprovalSheet(); }
+      if (state.pendingAsks.length > 0) { state.pendingAsks = []; renderAskSheet(); }
+      feed.appendChild(el("div", "note-pill err", "Error: " + (ev.message || ev.code || "turn failed")));
+      updateHeader();
+      scrollToBottom(false);
+      break;
+    default:
+      break;
+  }
+}
+
+// ---- Approval Sheet ----
+function renderApprovalSheet() {
+  clearEl(approvalSheet);
+  if (state.pendingApprovals.length === 0) { approvalSheet.classList.add("hidden"); return; }
+  approvalSheet.classList.remove("hidden");
+  const req = state.pendingApprovals[0];
+  const head = el("div", "sheet-head");
+  const left = el("div", "title-row");
+  left.appendChild(el("span", "pill blocked", "Approval"));
+  left.appendChild(el("span", "tool-name", req.tool_name || "tool"));
+  if (req.tier) left.appendChild(el("span", "pill", req.tier));
+  head.appendChild(left);
+  if (state.pendingApprovals.length > 1) {
+    head.appendChild(el("span", "pill", "+" + (state.pendingApprovals.length - 1) + " more"));
+  }
+  approvalSheet.appendChild(head);
+  if (req.reason) approvalSheet.appendChild(el("div", "subtitle", req.reason));
+  approvalSheet.appendChild(el("div", "sheet-cmd", req.summary || "(no summary)"));
+  if (req.diff) approvalSheet.appendChild(renderDiffBox(req.diff));
+
+  if (state.role !== "control") {
+    approvalSheet.appendChild(el("div", "readonly-bar", "Awaiting approval from host (view-only)"));
+    return;
+  }
+  const actions = el("div", "sheet-actions");
+  const onlyOnce = Array.isArray(req.choices) && req.choices.length === 1 && req.choices[0] === "once";
+  const allowBtn = el("button", "btn ok", "Allow once");
+  allowBtn.type = "button";
+  allowBtn.addEventListener("click", () => sendApproval(req.id, true, false));
+  actions.appendChild(allowBtn);
+
+  if (!onlyOnce) {
+    const alwaysBtn = el("button", "btn accent", "Always");
+    alwaysBtn.type = "button";
+    alwaysBtn.addEventListener("click", () => sendApproval(req.id, true, true));
+    actions.appendChild(alwaysBtn);
+  }
+  const denyBtn = el("button", "btn danger", "Deny");
+  denyBtn.type = "button";
+  denyBtn.addEventListener("click", () => sendApproval(req.id, false, false));
+  actions.appendChild(denyBtn);
+  approvalSheet.appendChild(actions);
+}
+
+// ---- Ask Sheet (supports kernel Form items) ----
+function renderAskSheet() {
+  clearEl(askSheet);
+  if (state.pendingAsks.length === 0) { askSheet.classList.add("hidden"); return; }
+  askSheet.classList.remove("hidden");
+  const req = state.pendingAsks[0];
+  const head = el("div", "sheet-head");
+  head.appendChild(el("span", "pill working", "Agent question"));
+  askSheet.appendChild(head);
+
+  const items = (req.form && Array.isArray(req.form.items)) ? req.form.items : [];
+  const collectors = [];
+
+  for (const item of items) {
+    if (item && item.Text) {
+      askSheet.appendChild(el("div", "subtitle", item.Text.text || ""));
+    } else if (item && item.Field) {
+      const f = item.Field;
+      if (f.kind && typeof f.kind === "object" && "Hidden" in f.kind) {
+        const hiddenVal = String(f.kind.Hidden || "");
+        collectors.push(() => hiddenVal);
+        continue;
+      }
+      const wrap = el("div", "ask-field");
+      wrap.appendChild(el("div", "ask-q", f.question || f.name || "Question"));
+      const opts = Array.isArray(f.options) ? f.options : [];
+      if (f.kind === "One" || f.kind === "Many" || f.kind === "Flag") {
+        const multi = f.kind === "Many";
+        const selected = new Set(opts.filter((o) => o.checked).map((o) => o.value));
+        const chips = el("div", "chips");
+        const chipNodes = [];
+        for (const opt of opts) {
+          const btn = el("button", "chip" + (selected.has(opt.value) ? " sel" : ""), opt.label || opt.value);
+          btn.type = "button";
+          btn.addEventListener("click", () => {
+            if (multi) {
+              if (selected.has(opt.value)) selected.delete(opt.value); else selected.add(opt.value);
+            } else {
+              if (f.kind === "Flag" && selected.has(opt.value)) selected.clear();
+              else { selected.clear(); selected.add(opt.value); }
+            }
+            chipNodes.forEach(([v, n]) => n.classList.toggle("sel", selected.has(v)));
+          });
+          chipNodes.push([opt.value, btn]);
+          chips.appendChild(btn);
+        }
+        wrap.appendChild(chips);
+        let customIn = null;
+        if (f.other || opts.length === 0) {
+          customIn = el("input", "field-in");
+          customIn.type = "text";
+          customIn.placeholder = "Custom answer…";
+          wrap.appendChild(customIn);
+        }
+        collectors.push(() => {
+          const custom = customIn ? customIn.value.trim() : "";
+          const vals = Array.from(selected);
+          if (custom) vals.push(custom);
+          return vals.join(", ");
+        });
+      } else {
+        const spec = (f.kind && f.kind.Text) || {};
+        const inp = el(spec.multiline ? "textarea" : "input", "field-in");
+        if (!spec.multiline) inp.type = "text";
+        inp.value = spec.value || "";
+        inp.placeholder = spec.placeholder || "Type your answer…";
+        wrap.appendChild(inp);
+        collectors.push(() => inp.value.trim());
+      }
+      askSheet.appendChild(wrap);
+    }
+  }
+
+  if (collectors.length === 0) {
+    const inp = el("input", "field-in");
+    inp.type = "text"; inp.placeholder = "Type your answer…";
+    askSheet.appendChild(inp);
+    collectors.push(() => inp.value.trim());
+  }
+
+  if (state.role !== "control") {
+    askSheet.appendChild(el("div", "readonly-bar", "Awaiting answer from host (view-only)"));
+    return;
+  }
+  const submit = el("button", "btn accent", "Answer");
+  submit.type = "button";
+  submit.addEventListener("click", () => {
+    const answers = collectors.map((fn) => fn());
+    sendAskAnswer(req.id, answers);
+  });
+  askSheet.appendChild(submit);
+}
+
+// ---- Actions (Direct & Relay) ----
+async function sendPromptOrSteer() {
+  const text = promptInput.value.trim();
+  if (!text || state.role !== "control") return;
+  promptInput.value = "";
+  autoGrowInput();
+  const wasBusy = state.busy;
+  if (!wasBusy) {
+    state.lastOptimisticUser = text;
+    appendUserBubble(text);
+    state.busy = true;
+    updateHeader();
+  }
+  try {
+    if (state.transport === "direct") {
+      const ep = wasBusy ? "steer" : "turns";
+      const body = wasBusy ? { text } : { prompt: text, auto_approve: false };
+      await apiJson("POST", "/api/sessions/" + encodeURIComponent(state.sessionId) + "/" + ep, body);
+    } else if (state.transport === "relay") {
+      const frame = wasBusy ? { type: "steer", text } : { type: "prompt", text };
+      await sendRelayFrame(frame);
+    }
+  } catch (err) {
+    if (!wasBusy) {
+      state.busy = false;
+      state.lastOptimisticUser = null;
+      updateHeader();
+    }
+    showToast(err.message || "Send failed", true);
+  }
+}
+
+async function sendInterrupt() {
+  if (state.role !== "control") return;
+  try {
+    if (state.transport === "direct") {
+      await apiJson("POST", "/api/sessions/" + encodeURIComponent(state.sessionId) + "/interrupt");
+    } else if (state.transport === "relay") {
+      await sendRelayFrame({ type: "abort" });
+    }
+    showToast("Interrupt sent", false);
+  } catch (err) { showToast(err.message || "Stop failed", true); }
+}
+
+async function sendApproval(callId, approved, always) {
+  if (state.role !== "control") return;
+  state.pendingApprovals = state.pendingApprovals.filter((a) => a.id !== callId);
+  renderApprovalSheet();
+  updateHeader();
+  try {
+    if (state.transport === "direct") {
+      await apiJson("POST", "/api/sessions/" + encodeURIComponent(state.sessionId) + "/approve", {
+        call_id: callId, approved, always: Boolean(always),
+      });
+    } else if (state.transport === "relay") {
+      await sendRelayFrame({ type: "approve", call_id: callId, approved, always: Boolean(always) });
+    }
+  } catch (err) { showToast(err.message || "Approval failed", true); }
+}
+
+async function sendAskAnswer(id, answers) {
+  if (state.role !== "control") return;
+  state.pendingAsks = state.pendingAsks.filter((a) => a.id !== id);
+  renderAskSheet();
+  updateHeader();
+  try {
+    if (state.transport === "direct") {
+      await apiJson("POST", "/api/sessions/" + encodeURIComponent(state.sessionId) + "/ask", { id, answers });
+    } else if (state.transport === "relay") {
+      await sendRelayFrame({ type: "ask-answer", id, answers });
+    }
+  } catch (err) { showToast(err.message || "Answer failed", true); }
+}
+
+// ---- Direct HTTP + fetch() SSE Transport ----
+async function apiJson(method, path, body) {
+  const headers = { Accept: "application/json" };
+  if (state.token) headers.Authorization = "Bearer " + state.token;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const resp = await fetch(path, {
+    method, headers, cache: "no-store",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (resp.status === 401) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    state.token = null;
+    showPairScreen("Session expired or revoked — pair again.");
+    throw new Error("Unauthorized");
+  }
+  const text = await resp.text();
+  let parsed = null;
+  try { parsed = text ? JSON.parse(text) : null; } catch (_) {}
+  if (!resp.ok) throw new Error((parsed && parsed.error) || ("HTTP " + resp.status));
+  return parsed;
+}
+
+async function pairWithCode(code) {
+  const resp = await fetch("/api/pair", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: code.trim() }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.token) {
+    throw new Error(data.error || ("Pairing failed (HTTP " + resp.status + ")"));
+  }
+  state.token = data.token;
+  state.role = data.role || "view";
+  state.host = data.host || null;
+  sessionStorage.setItem(TOKEN_KEY, data.token);
+  await startDirectApp();
+}
+
+async function startDirectApp() {
+  state.transport = "direct";
+  const info = await apiJson("GET", "/api/info");
+  state.host = info;
+  if (info.role) state.role = info.role;
+  pairScreen.classList.add("hidden");
+  mainWrap.classList.remove("hidden");
+  setBanner("", "");
+
+  await refreshSessions();
+  const target = (info.active_session_id && state.sessions.some((s) => s.id === info.active_session_id))
+    ? info.active_session_id
+    : (state.sessions[0] && state.sessions[0].id);
+  if (target) await selectSession(target);
+  else {
+    titleEl.textContent = info.host_name || "hrn remote";
+    state.connected = true;
+    ensureEmptyState();
+    updateHeader();
+  }
+}
+
+async function refreshSessions() {
+  state.sessions = await apiJson("GET", "/api/sessions");
+  renderSessionDrawer();
+}
+
+function renderSessionDrawer() {
+  clearEl(sessList);
+  const q = sessSearch.value.trim().toLowerCase();
+  const filtered = state.sessions.filter((s) =>
+    !q || (s.title || "").toLowerCase().includes(q) || (s.cwd || "").toLowerCase().includes(q)
+  );
+  for (const s of filtered) {
+    const btn = el("button", "sess-item" + (s.id === state.sessionId ? " active" : ""));
+    btn.type = "button";
+    const top = el("div", "sess-top");
+    if (s.active_turn || s.status === "working") {
+      const p = el("span", "pill working pulse"); p.appendChild(el("span", "dot")); top.appendChild(p);
+    }
+    top.appendChild(el("span", "", s.title || s.id));
+    btn.appendChild(top);
+    btn.appendChild(el("div", "sess-meta", (s.model ? s.model + " · " : "") + (s.cwd || "")));
+    btn.addEventListener("click", () => {
+      drawerBackdrop.classList.add("hidden");
+      selectSession(s.id);
+    });
+    sessList.appendChild(btn);
+  }
+}
+
+async function selectSession(sessionId) {
+  if (state.sseAbort) { state.sseAbort.abort(); state.sseAbort = null; }
+  state.sessionId = sessionId;
+  state.seenNodeIds.clear();
+  state.toolCards.clear();
+  state.pendingApprovals = [];
+  state.pendingAsks = [];
+  finalizeStreamSlot();
+  clearEl(feed);
+  renderSessionDrawer();
+
+  const tr = await apiJson("GET", "/api/sessions/" + encodeURIComponent(sessionId) + "/transcript");
+  titleEl.textContent = (tr.meta && tr.meta.title) || sessionId;
+  state.model = (tr.meta && tr.meta.model) || "";
+  state.busy = Boolean(tr.busy);
+  state.agentStatus = (tr.meta && tr.meta.status) || (tr.busy ? "working" : "idle");
+  for (const node of (tr.nodes || [])) renderDagNode(node);
+  state.pendingApprovals = Array.isArray(tr.pending_approvals) ? tr.pending_approvals.slice() : [];
+  state.pendingAsks = Array.isArray(tr.pending_asks) ? tr.pending_asks.slice() : [];
+  ensureEmptyState();
+  renderApprovalSheet();
+  renderAskSheet();
+  state.autoScroll = true;
+  scrollToBottom(true);
+  updateHeader();
+  openDirectSse(sessionId);
+}
+
+async function openDirectSse(sessionId) {
+  if (state.sseAbort) state.sseAbort.abort();
+  const ctrl = new AbortController();
+  state.sseAbort = ctrl;
+  try {
+    const resp = await fetch("/api/sessions/" + encodeURIComponent(sessionId) + "/events", {
+      headers: { Authorization: "Bearer " + state.token, Accept: "text/event-stream" },
+      cache: "no-store", signal: ctrl.signal,
+    });
+    if (resp.status === 401) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      showPairScreen("Session revoked — pair again.");
+      return;
+    }
+    if (!resp.ok || !resp.body) throw new Error("SSE HTTP " + resp.status);
+    state.connected = true;
+    state.sseDelay = 1000;
+    setBanner("", "");
+    updateHeader();
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) !== -1) {
+        const block = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        processSseBlock(block);
+      }
+    }
+  } catch (err) {
+    if (ctrl.signal.aborted) return;
+  }
+  if (ctrl.signal.aborted || state.sessionId !== sessionId) return;
+  state.connected = false;
+  updateHeader();
+  const wait = state.sseDelay;
+  state.sseDelay = Math.min(state.sseDelay * 2, 8000);
+  setTimeout(() => { if (state.sessionId === sessionId && state.token) openDirectSse(sessionId); }, wait);
+}
+
+function processSseBlock(block) {
+  const dataLines = [];
+  for (const line of block.split("\n")) {
+    if (!line || line.startsWith(":")) continue;
+    if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+  }
+  if (dataLines.length === 0) return;
+  try {
+    const env = JSON.parse(dataLines.join("\n"));
+    if (env && env.event) handleAgentEvent(env.event);
+  } catch (_) {}
+}
+
+// ---- E2E Relay WebSocket + AES-256-GCM + gzip Transport ----
+function b64UrlDecode(str) {
+  const clean = str.trim().replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - (clean.length % 4)) % 4;
+  const bin = atob(clean + "=".repeat(pad));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function gzipBytes(bytes) {
+  const cs = new CompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(cs);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function gunzipCapped(bytes) {
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_UNSEALED) { await reader.cancel(); throw new Error("Frame exceeds 16 MiB cap"); }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { merged.set(c, off); off += c.byteLength; }
+  return merged;
+}
+
+async function sendRelayFrame(frameObj) {
+  const ws = state.relay.ws;
+  if (!ws || ws.readyState !== WebSocket.OPEN) throw new Error("Not connected to relay");
+  const plain = new TextEncoder().encode(JSON.stringify(frameObj));
+  const gz = await gzipBytes(plain);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, state.relay.key, gz));
+  const out = new Uint8Array(4 + 12 + ct.byteLength);
+  out.set(iv, 4);
+  out.set(ct, 16);
+  ws.send(out);
+}
+
+async function decodeRelayFrame(buf) {
+  const raw = new Uint8Array(buf);
+  if (raw.byteLength < 4) return null;
+  if (raw.byteLength === 4) return null; // peer disconnect sentinel
+  const sealed = raw.slice(4);
+  if (sealed.byteLength < 28) throw new Error("Truncated sealed frame");
+  const iv = sealed.slice(0, 12);
+  const ct = sealed.slice(12);
+  const gz = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, state.relay.key, ct));
+  const plain = await gunzipCapped(gz);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+async function startRelayMode(room, frag) {
+  state.transport = "relay";
+  if (!window.crypto || !window.crypto.subtle) {
+    showPairScreen("E2E relay requires HTTPS (or localhost) for WebCrypto. Install cloudflared, set an https:// [collab] relay, or use /remote on LAN.");
+    return;
+  }
+  const parts = frag.split(".");
+  if (parts.length < 1 || parts.length > 2) { showPairScreen("Malformed room fragment."); return; }
+  let keyBytes;
+  try { keyBytes = b64UrlDecode(parts[0]); } catch (_) { showPairScreen("Invalid room key."); return; }
+  if (keyBytes.length !== 32) { showPairScreen("Invalid room key length."); return; }
+
+  state.relay.room = room;
+  state.relay.writeToken = parts[1] || null;
+  state.relay.key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
+  state.role = state.relay.writeToken ? "control" : "view";
+  pairScreen.classList.add("hidden");
+  mainWrap.classList.remove("hidden");
+  ensureEmptyState();
+  updateHeader();
+  connectRelayWs();
+}
+
+function connectRelayWs() {
+  if (state.relay.closed) return;
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const url = proto + "//" + location.host + "/r/" + encodeURIComponent(state.relay.room) + "?role=guest";
+  const ws = new WebSocket(url);
+  ws.binaryType = "arraybuffer";
+  state.relay.ws = ws;
+
+  ws.addEventListener("open", async () => {
+    state.connected = true;
+    state.relay.delay = 1000;
+    setBanner("", "");
+    updateHeader();
+    const hello = { type: "hello", name: "phone" };
+    if (state.relay.writeToken) hello.write_token = state.relay.writeToken;
+    try { await sendRelayFrame(hello); } catch (e) { showToast(e.message, true); }
+  });
+
+  ws.addEventListener("message", async (ev) => {
+    if (!(ev.data instanceof ArrayBuffer)) return;
+    try {
+      const frame = await decodeRelayFrame(ev.data);
+      if (frame) handleRelayHostFrame(frame);
+    } catch (e) { setBanner("E2E decrypt error: " + e.message, "err"); }
+  });
+
+  ws.addEventListener("close", () => {
+    state.connected = false;
+    updateHeader();
+    if (state.relay.closed) return;
+    const wait = state.relay.delay;
+    state.relay.delay = Math.min(state.relay.delay * 2, 8000);
+    setTimeout(connectRelayWs, wait);
+  });
+}
+
+function handleRelayHostFrame(f) {
+  switch (f.type) {
+    case "welcome":
+      titleEl.textContent = f.title || f.session_id || "hrn live";
+      state.model = f.model || "";
+      state.role = f.can_write ? "control" : "view";
+      state.relay.expectedChunks = Number(f.total_chunks || 0);
+      state.relay.chunks = new Array(state.relay.expectedChunks);
+      if (state.relay.expectedChunks === 0) {
+        clearEl(feed); state.seenNodeIds.clear(); state.toolCards.clear(); ensureEmptyState();
+      }
+      updateHeader();
+      break;
+    case "snapshot-chunk":
+      if (state.relay.chunks && f.index < state.relay.chunks.length) {
+        state.relay.chunks[f.index] = f.nodes || [];
+        if (state.relay.chunks.every((c) => Array.isArray(c))) {
+          clearEl(feed); state.seenNodeIds.clear(); state.toolCards.clear();
+          for (const chunk of state.relay.chunks) {
+            for (const node of chunk) renderDagNode(node);
+          }
+          state.relay.chunks = null;
+          ensureEmptyState();
+          scrollToBottom(true);
+        }
+      }
+      break;
+    case "entry":
+      if (f.node) { renderDagNode(f.node); scrollToBottom(false); }
+      break;
+    case "event":
+      if (f.event) handleAgentEvent(f.event);
+      break;
+    case "state":
+      state.busy = Boolean(f.busy);
+      state.agentStatus = state.busy ? "working" : "idle";
+      updateHeader();
+      break;
+    case "goodbye":
+      state.relay.closed = true;
+      setBanner("Host closed room: " + (f.reason || "ended"), "info");
+      if (state.relay.ws) state.relay.ws.close();
+      break;
+    case "error":
+      showToast(f.message || "Host error", true);
+      break;
+    default:
+      break;
+  }
+}
+
+// ---- Manual Pairing Screen & UI Wiring ----
+function showPairScreen(errMsg) {
+  if (state.sseAbort) { state.sseAbort.abort(); state.sseAbort = null; }
+  state.transport = null;
+  mainWrap.classList.add("hidden");
+  composer.classList.add("hidden");
+  approvalSheet.classList.add("hidden");
+  askSheet.classList.add("hidden");
+  pairScreen.classList.remove("hidden");
+  if (errMsg) { pairErr.textContent = errMsg; pairErr.classList.remove("hidden"); }
+  else { pairErr.classList.add("hidden"); }
+  updateHeader();
+}
+
+function autoGrowInput() {
+  promptInput.style.height = "auto";
+  promptInput.style.height = Math.min(promptInput.scrollHeight, 140) + "px";
+}
+promptInput.addEventListener("input", autoGrowInput);
+promptInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    sendPromptOrSteer();
+  }
+});
+sendBtn.addEventListener("click", sendPromptOrSteer);
+stopBtn.addEventListener("click", sendInterrupt);
+
+menuBtn.addEventListener("click", () => {
+  drawerBackdrop.classList.remove("hidden");
+  refreshSessions().catch(() => {});
+});
+drawerCloseBtn.addEventListener("click", () => drawerBackdrop.classList.add("hidden"));
+drawerBackdrop.addEventListener("click", (e) => { if (e.target === drawerBackdrop) drawerBackdrop.classList.add("hidden"); });
+sessSearch.addEventListener("input", renderSessionDrawer);
+newSessToggleBtn.addEventListener("click", () => newSessForm.classList.toggle("hidden"));
+newSessCreateBtn.addEventListener("click", async () => {
+  const title = newTitleIn.value.trim() || "Mobile session";
+  const cwd = newCwdIn.value.trim() || ".";
+  const model = newModelIn.value.trim() || null;
+  try {
+    const created = await apiJson("POST", "/api/sessions", { title, cwd, model });
+    newSessForm.classList.add("hidden");
+    newTitleIn.value = ""; newCwdIn.value = ""; newModelIn.value = "";
+    drawerBackdrop.classList.add("hidden");
+    await refreshSessions();
+    await selectSession(created.id);
+  } catch (err) { showToast(err.message || "Create failed", true); }
+});
+
+pairSubmitBtn.addEventListener("click", async () => {
+  const raw = pairInput.value.trim();
+  if (!raw) return;
+  pairErr.classList.add("hidden");
+  const roomMatch = raw.match(/\/r\/([A-Za-z0-9_-]{8,64})\/?#(.+)$/);
+  if (roomMatch) { location.href = "/r/" + roomMatch[1] + "#" + roomMatch[2]; return; }
+  const pairMatch = raw.match(/#pair=([A-Za-z0-9_-]+)$/);
+  const code = pairMatch ? pairMatch[1] : raw;
+  try { await pairWithCode(code); } catch (err) {
+    pairErr.textContent = err.message || "Invalid pairing code";
+    pairErr.classList.remove("hidden");
+  }
+});
+
+// ---- Entrypoint ----
+async function boot() {
+  initTheme();
+  const roomMatch = location.pathname.match(/^\/r\/([A-Za-z0-9_-]{8,64})\/?$/);
+  const hash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+
+  if (roomMatch && hash) {
+    history.replaceState(null, "", location.pathname);
+    await startRelayMode(roomMatch[1], hash);
+    return;
+  }
+  if (hash.startsWith("pair=")) {
+    const code = hash.slice(5);
+    history.replaceState(null, "", "/");
+    try { await pairWithCode(code); }
+    catch (err) { showPairScreen(err.message || "Pairing code invalid or expired."); }
+    return;
+  }
+  const saved = sessionStorage.getItem(TOKEN_KEY);
+  if (saved) {
+    state.token = saved;
+    try { await startDirectApp(); return; } catch (_) {}
+  }
+  showPairScreen("");
+}
+
+boot().catch((err) => showPairScreen(err && err.message ? err.message : String(err)));
+})();
+</script>
+</body>
+</html>

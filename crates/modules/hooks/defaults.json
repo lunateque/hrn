@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "timeout_secs": 15,
+  "max_output_bytes": 65536,
+  "discover_tools": true,
+  "discover_claude_settings": false
+}

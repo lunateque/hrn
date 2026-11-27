@@ -1,0 +1,159 @@
+# hrn default keybindings — the built-in map, compiled in. The user file
+# ~/.harness/keybindings.toml overrides it action by action with `id = "chord"`
+# or `id = ["chord", …]`; `id = []` unbinds. Chord notation: Ctrl+P, Alt+Shift+P,
+# Shift+Enter, F5.
+
+[[action]]
+id = "app.history.search"
+chords = ["Ctrl+R"]
+help = "search prompt history"
+
+[[action]]
+id = "app.editor.external"
+chords = ["Ctrl+G"]
+help = "edit the draft in $VISUAL / $EDITOR (notepad on Windows)"
+
+[[action]]
+id = "app.local.open"
+chords = ["Alt+G"]
+help = "open a session local:// artifact in $VISUAL / $EDITOR"
+
+[[action]]
+id = "app.message.followUp"
+chords = ["Ctrl+Enter", "Ctrl+Q"]
+help = "queue a follow-up message for after the turn"
+
+[[action]]
+id = "app.message.dequeue"
+chords = ["Alt+Up", "Shift+Up"]
+help = "take a queued follow-up back into the editor"
+
+[[action]]
+id = "app.thinking.toggle"
+chords = ["Ctrl+T"]
+help = "show or hide thinking blocks"
+
+[[action]]
+id = "app.thinking.cycle"
+chords = ["Shift+Tab"]
+help = "cycle thinking effort"
+
+[[action]]
+id = "app.model.cycleForward"
+chords = ["Ctrl+P"]
+help = "cycle model forward"
+
+[[action]]
+id = "app.model.cycleBackward"
+chords = ["Shift+Ctrl+P"]
+help = "cycle model backward"
+
+[[action]]
+id = "app.model.select"
+chords = ["Alt+M"]
+help = "open the model and roles hub (/model)"
+
+[[action]]
+id = "app.model.selectTemporary"
+chords = ["Alt+P"]
+help = "temporarily switch the session model (/switch)"
+
+[[action]]
+id = "app.plan.toggle"
+chords = ["Alt+Shift+P"]
+help = "toggle plan mode"
+
+[[action]]
+id = "app.mode.cycle"
+chords = ["Ctrl+Y"]
+help = "cycle permission mode"
+
+[[action]]
+id = "app.tools.expand"
+chords = ["Ctrl+O"]
+help = "expand tool output and thinking"
+
+[[action]]
+id = "app.tools.toggleVisibility"
+chords = ["Ctrl+Shift+O"]
+help = "show or hide tool call cards"
+
+[[action]]
+id = "app.links.hint"
+chords = ["Alt+O"]
+help = "open link hint overlay for links in the transcript"
+
+[[action]]
+id = "app.display.redraw"
+chords = ["Ctrl+L"]
+help = "redraw the screen"
+
+[[action]]
+id = "app.retry"
+chords = ["F5", "Alt+R"]
+help = "retry the last turn"
+
+[[action]]
+id = "app.clipboard.copyPrompt"
+chords = ["Alt+Shift+C"]
+help = "copy the last answer to the clipboard"
+
+[[action]]
+id = "app.clipboard.pasteImage"
+chords = ["Ctrl+V", "Alt+V"]
+help = "paste clipboard image or text"
+
+[[action]]
+id = "app.clipboard.pasteTextRaw"
+chords = ["Ctrl+Shift+V", "Alt+Shift+V"]
+help = "paste plain text from the clipboard without image interception"
+
+[[action]]
+id = "app.hotkeys"
+chords = ["Ctrl+H"]
+help = "show this key list"
+
+[[action]]
+id = "app.session.pin"
+chords = ["Alt+K"]
+help = "pin the selected session in the picker"
+
+[[action]]
+id = "app.session.unpin"
+chords = ["Alt+Shift+K"]
+help = "unpin the selected session in the picker"
+
+[[action]]
+id = "app.session.delete"
+chords = ["Backspace", "Delete"]
+help = "delete the selected session in the picker"
+
+[[action]]
+id = "app.btw.inject"
+chords = ["Alt+I"]
+help = "inject a /btw <inject> block once"
+
+[[action]]
+id = "app.approval.approve"
+chords = ["Ctrl+Enter", "Ctrl+Q", "y"]
+help = "approve the pending tool call"
+
+[[action]]
+id = "app.approval.deny"
+chords = ["n", "Esc"]
+help = "deny the pending tool call"
+
+[[action]]
+id = "app.agents.hub"
+chords = ["Alt+A"]
+help = "open the live Agent Hub (subagent roster, inspector and activity)"
+
+[[action]]
+id = "app.tree.nextBranch"
+chords = []
+help = "switch to the next sibling branch in the session tree"
+
+[[action]]
+id = "app.tree.previousBranch"
+chords = []
+help = "switch to the previous sibling branch in the session tree"

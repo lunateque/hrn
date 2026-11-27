@@ -1,0 +1,53 @@
+# One direct external dependency per line: <crate-name> <reason>.
+# `crates/kernel` may only use `serde` and `serde_json` (canonical wire IR).
+# `crates/harness` may use `serde` and `serde_json` + `hrn-kernel` only (zero IO/async crates).
+# `crates/modules/*` use no external crate at all (serde, serde_json and tokio come through `hrn-kernel` and `hrn-edge-rt`),
+# except `rusqlite` in `crates/modules/memory` (its own SQLite file).
+# Other external crates are strictly confined to `crates/edge/*`, `crates/front/*`, `crates/bins/*`, and `xtask`.
+aes-gcm AES-256-GCM authenticated encryption for sealed share links and live collab frames
+arboard OS clipboard text and RGBA image read for TUI Ctrl+V image paste
+base64 RFC 4648 base64 encoding/decoding for multimodal image attachments
+bytes buffer type for hyper HTTP/SSE streaming bodies
+clap CLI argument and subcommand parsing for the single hrn binary
+clap_complete shell completion script generation for hrn completions <shell>
+crossterm cross-platform Windows Terminal / WezTerm / Unix terminal backend
+flate2 pure-Rust (miniz_oxide) inflate for zip/tar.gz/office reads in `read`; already in the tree via png
+form_urlencoded RFC 6749 application/x-www-form-urlencoded encoding/decoding
+getrandom OS CSPRNG for OAuth PKCE verifier and state (RFC 7636)
+globset compiled glob pattern matching for file discovery tool
+grep-matcher the `Matcher` trait of the in-process ripgrep engine: locates the match column inside an over-long line
+grep-regex regex matcher backing in-process ripgrep search tool
+grep-searcher in-process ripgrep line/context search engine
+http shared HTTP request/response types
+http-body streaming body trait for hyper
+http-body-util streaming body combinators for hyper
+hyper HTTP/1.1 + HTTP/2 outbound client and loopback daemon server
+hyper-util tokio IO glue and connection pooling for hyper
+ignore gitignore-aware parallel directory walker for grep and glob
+image pure-Rust PNG/JPEG/WebP/GIF/BMP decoding, resizing, and encoding for multimodal tools and TUI preview
+percent-encoding URL query and path encoding/decoding
+portable-pty ConPTY (Windows) / openpty (Unix) pseudo-terminals for `bash` with `pty: true`; safe API, ~30 KB source
+process-wrap child-wrapper traits, CREATE_NO_WINDOW flags and Unix ProcessGroup (its snapshot-based Win32 JobObject is disabled: ~135 ms per spawn)
+pulldown-cmark CommonMark parser for custom TUI markdown renderer
+ratatui terminal UI layout and widget framework
+rusqlite bundled SQLite (WAL) for DAG session persistence and the memory module's FTS5 store
+rustls pure-Rust TLS client (ring backend)
+rustls-platform-verifier OS native certificate store verification (Windows Cert Store + Linux)
+serde serialization/deserialization for canonical IR, config, and wire payloads
+serde_json JSON encoding/decoding for LLM wire protocols, tool schemas, and MCP JSON-RPC
+sha2 FIPS 180-4 SHA-256 hashing for OAuth2 PKCE S256 and subscription request shaping
+similar Myers/patience diff engine for `edit` unified diffs and TUI rendering
+tokio async runtime, channels, timers, and process IO
+tokio-rustls async TLS stream adapter for hyper
+toml typed configuration parsing
+toml_edit comment-preserving TOML editor for hrn config set/reset, preset saves, and provider setup
+unicode-width terminal display width of text for TUI wrapping, truncation and cursor placement
+win32job safe Win32 job objects: per-tree kill-on-close job and hrn-wide kill-on-close job without unsafe and without process-wrap's all-threads snapshot
+ast-grep-core AST pattern matching and rewriting engine behind `ast_grep` / `ast_edit`
+tree-sitter-rust Rust grammar for the ast tools
+tree-sitter-python Python grammar for the ast tools
+tree-sitter-javascript JavaScript grammar for the ast tools
+tree-sitter-typescript TypeScript and TSX grammars for the ast tools
+tree-sitter-go Go grammar for the ast tools
+tree-sitter-json JSON grammar for the ast tools
+tree-sitter-bash Bash grammar for the ast tools
