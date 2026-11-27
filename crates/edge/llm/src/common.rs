@@ -1,15 +1,13 @@
 //! Helpers shared by the wire adapters: error constructors, strict event parsing, cancellable SSE
 //! reads and the streaming tool-call assembler.
 
-use hrn_edge_http::{SseEvent, SseStream};
+use bytes::Bytes;
+use hrn_edge_http::{HttpClient, SseEvent, SseStream, StreamReply};
 use hrn_kernel::{CancelFlag, HrnError, Result, ToolCall};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
-
-/// Cancellation poll period while waiting for the next SSE event.
-const CANCEL_POLL: Duration = Duration::from_millis(100);
 
 /// A provider error that is not worth retrying (protocol violation, rejected request).
 pub(crate) fn fatal(message: impl Into<String>) -> HrnError {
@@ -39,7 +37,35 @@ pub(crate) fn parse_event(provider: &str, data: &str) -> Result<Value> {
     })
 }
 
-/// Read the next SSE event, returning [`HrnError::Cancelled`] promptly when `cancel` trips even
+/// Start an SSE POST request while respecting immediate cooperative cancellation during TTFT.
+pub(crate) async fn post_sse_cancellable(
+    http: &HttpClient,
+    url: &str,
+    headers: &[(String, String)],
+    body: Bytes,
+    timeout: Duration,
+    cancel: &CancelFlag,
+) -> Result<SseStream> {
+    cancel
+        .race(http.post_sse(url, headers, body, timeout))
+        .await
+}
+
+/// Start a streaming POST request while respecting immediate cooperative cancellation during TTFT.
+pub(crate) async fn post_stream_cancellable(
+    http: &HttpClient,
+    url: &str,
+    headers: &[(String, String)],
+    body: Bytes,
+    timeout: Duration,
+    cancel: &CancelFlag,
+) -> Result<StreamReply> {
+    cancel
+        .race(http.post_stream(url, headers, body, timeout))
+        .await
+}
+
+/// Read the next SSE event, returning [`HrnError::Cancelled`] immediately when `cancel` trips even
 /// if the connection is stalled (the idle timeout inside the stream keeps running meanwhile).
 pub(crate) async fn next_event(
     sse: &mut SseStream,
@@ -48,18 +74,10 @@ pub(crate) async fn next_event(
     if cancel.is_cancelled() {
         return Err(HrnError::Cancelled);
     }
-    let next = sse.next_event();
-    tokio::pin!(next);
-    let mut ticker = tokio::time::interval(CANCEL_POLL);
-    loop {
-        tokio::select! {
-            event = &mut next => return event,
-            _ = ticker.tick() => {
-                if cancel.is_cancelled() {
-                    return Err(HrnError::Cancelled);
-                }
-            }
-        }
+    tokio::select! {
+        biased;
+        () = cancel.cancelled() => Err(HrnError::Cancelled),
+        event = sse.next_event() => event,
     }
 }
 

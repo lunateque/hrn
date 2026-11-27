@@ -411,6 +411,11 @@ pub trait SessionStore: Send + Sync {
     /// Everything the session itself has used (its subagents' sessions not included).
     fn session_usage(&self, session_id: &str) -> Result<Usage>;
 
+    /// Prompt tokens reported by the most recent non-zero LLM call for `session_id`, if any.
+    fn latest_prompt_tokens(&self, _session_id: &str) -> Result<Option<u64>> {
+        Ok(None)
+    }
+
     /// Usage grouped by UTC day and model, newest day first.
     fn usage_report(&self) -> Result<Vec<UsageRow>>;
 

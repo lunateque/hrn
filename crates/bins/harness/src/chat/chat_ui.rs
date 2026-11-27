@@ -1,7 +1,6 @@
 //! The UI bridges: runtime events, approvals and ask forms forwarded to the TUI (and any active
 //! `/remote` mobile supervision clients), plus the turn driver a submitted prompt runs as a task.
 
-use super::CANCEL_POLL;
 use super::remote::{RemoteLiveHub, SharedApprovalReply, SharedAskReply};
 use crate::collab::{CollabEventSink, CollabHostBridge};
 use hrn_harness::{AgentRuntime, SessionControl, TurnIo};
@@ -10,6 +9,7 @@ use hrn_kernel::{
     CancelFlag, EventSink, HrnError, ImageAttachment, Result, SessionStore, Submission,
 };
 use hrn_tui::{ApprovalAsk, AskPrompt, TaskEnd, TurnOutcome, UiEvent, UiSender};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 
@@ -18,18 +18,21 @@ pub(crate) struct UiEvents {
     tx: UiSender,
     session_id: String,
     remote: Option<Arc<RemoteLiveHub>>,
+    suppress_tui: Option<Arc<AtomicBool>>,
 }
 
 impl UiEvents {
-    pub(crate) fn new(
+    pub(crate) fn with_suppress(
         tx: UiSender,
         session_id: String,
         remote: Option<Arc<RemoteLiveHub>>,
+        suppress_tui: Arc<AtomicBool>,
     ) -> Self {
         Self {
             tx,
             session_id,
             remote,
+            suppress_tui: Some(suppress_tui),
         }
     }
 
@@ -38,6 +41,7 @@ impl UiEvents {
             tx,
             session_id: String::new(),
             remote: None,
+            suppress_tui: None,
         }
     }
 }
@@ -46,6 +50,14 @@ impl EventSink for UiEvents {
     fn emit(&self, event: AgentEvent) -> BoxFuture<bool> {
         if let Some(hub) = &self.remote {
             hub.publish(&self.session_id, event.clone());
+        }
+        if self
+            .suppress_tui
+            .as_ref()
+            .is_some_and(|flag| flag.load(Ordering::Relaxed))
+            && !matches!(event, AgentEvent::SessionTitle { .. })
+        {
+            return Box::pin(async { true });
         }
         let alive = self.tx.send(UiEvent::Agent(event));
         Box::pin(async move { alive })
@@ -175,15 +187,13 @@ impl AskHandler for UiAsk {
 }
 
 pub(crate) async fn cancelled(flag: &CancelFlag) {
-    while !flag.is_cancelled() {
-        tokio::time::sleep(CANCEL_POLL).await;
-    }
+    flag.cancelled().await;
 }
 
 /// Run `prompt`, then any steering that arrived after the turn's last step as a follow-up turn.
 #[expect(
     clippy::too_many_arguments,
-    reason = "turn driver threads runtime, channels, cancellation, collab, and remote hub"
+    reason = "turn driver threads runtime, channels, cancellation, collab, remote hub, and focus gate"
 )]
 pub(crate) async fn run_turns(
     runtime: AgentRuntime,
@@ -196,11 +206,13 @@ pub(crate) async fn run_turns(
     collab_host: Option<CollabHostBridge>,
     remote_hub: Option<Arc<RemoteLiveHub>>,
     store: Arc<dyn SessionStore>,
+    suppress_tui: Arc<AtomicBool>,
 ) -> TaskEnd {
-    let ui_events: Arc<dyn EventSink> = Arc::new(UiEvents::new(
+    let ui_events: Arc<dyn EventSink> = Arc::new(UiEvents::with_suppress(
         tx.clone(),
         session_id.clone(),
         remote_hub.clone(),
+        suppress_tui,
     ));
     let events: Arc<dyn EventSink> = match collab_host.clone() {
         Some(bridge) => Arc::new(CollabEventSink {
@@ -251,6 +263,10 @@ pub(crate) async fn run_turns(
 }
 
 /// Continue an interrupted session turn (`--restore`), then drain any follow-ups that arrive.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "restore driver threads runtime, channels, cancellation, remote hub, and focus gate"
+)]
 pub(crate) async fn run_restore(
     runtime: AgentRuntime,
     session_id: String,
@@ -259,13 +275,15 @@ pub(crate) async fn run_restore(
     cancel: CancelFlag,
     remote_hub: Option<Arc<RemoteLiveHub>>,
     store: Arc<dyn SessionStore>,
+    suppress_tui: Arc<AtomicBool>,
 ) -> TaskEnd {
     let io = TurnIo {
         cancel: cancel.clone(),
-        events: Arc::new(UiEvents::new(
+        events: Arc::new(UiEvents::with_suppress(
             tx.clone(),
             session_id.clone(),
             remote_hub.clone(),
+            Arc::clone(&suppress_tui),
         )),
         approval: Some(Arc::new(UiGate::new(tx.clone(), remote_hub.clone()))),
         ask: Some(Arc::new(UiAsk::new(tx.clone(), remote_hub.clone()))),
@@ -288,6 +306,7 @@ pub(crate) async fn run_restore(
                     None,
                     remote_hub,
                     store,
+                    suppress_tui,
                 )
                 .await;
             }

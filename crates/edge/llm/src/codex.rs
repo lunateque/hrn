@@ -64,10 +64,15 @@ pub(crate) async fn stream(
                 headers.push((name, value));
             }
         }
-        let reply = auth
-            .http
-            .post_stream(&url, &headers, body.clone(), timeout)
-            .await?;
+        let reply = crate::common::post_stream_cancellable(
+            auth.http,
+            &url,
+            &headers,
+            body.clone(),
+            timeout,
+            cancel,
+        )
+        .await?;
         let failed = match reply {
             StreamReply::Stream(mut sse) => {
                 return read_stream(&mut sse, model_id, cancel, sink).await;

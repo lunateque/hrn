@@ -327,6 +327,8 @@ impl ChatBackend {
         self.settings.thinking = meta.thinking;
         self.settings.mode = meta.permission_mode;
         self.focused_agent = Some(agent_id.to_owned());
+        self.focused_on_child
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         self.runtime.agents().inbox().wake();
         Ok((meta, nodes))
     }
@@ -334,6 +336,8 @@ impl ChatBackend {
     pub(super) fn unfocus_agent_live(&mut self) -> Result<Option<(SessionMeta, Vec<DagNode>)>> {
         self.clear_focus_sink();
         self.focused_agent = None;
+        self.focused_on_child
+            .store(false, std::sync::atomic::Ordering::Relaxed);
         if let Some(saved) = self.saved_main_settings.take() {
             self.settings = saved;
         }
@@ -373,7 +377,11 @@ impl ChatBackend {
         if record.is_running() {
             record.control.push_steer(text.to_owned());
             record.note_irc(text, now);
-            self.runtime.agents().inbox().wake();
+            if let Some(child_sid) = record.snapshot().session_id {
+                self.runtime.agents().inbox().notify_steer(&child_sid);
+            } else {
+                self.runtime.agents().inbox().wake();
+            }
             Ok(true)
         } else {
             let _gen = self.runtime.agents().revive(&root, agent_id, text)?;

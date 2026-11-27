@@ -37,10 +37,10 @@ pub use process_wrap::tokio::ChildWrapper;
 pub use session::{ShellCall, ShellResult, ShellSession};
 pub use shell::{Shell, resolve_on_path, resolve_program, resolve_shell, set_shell_path};
 
-/// Cancellation poll period while a child runs.
-const CANCEL_POLL: Duration = Duration::from_millis(50);
 /// How long to wait for a killed leader to be reaped.
 const REAP_TIMEOUT: Duration = Duration::from_secs(5);
+/// Upper bound for reaping a leader after explicit cancellation.
+const CANCEL_REAP_TIMEOUT: Duration = Duration::from_millis(120);
 /// How long output pipes may stay open after the process tree was killed.
 const DRAIN_TIMEOUT: Duration = Duration::from_secs(3);
 /// Smallest accepted `max_output_bytes` (keeps head/tail splits meaningful).
@@ -208,20 +208,14 @@ async fn wait_outcome(
     deadline: tokio::time::Instant,
     cancel: &CancelFlag,
 ) -> Outcome {
-    let wait = child.inner_mut().wait();
-    tokio::pin!(wait);
-    let mut ticker = tokio::time::interval(CANCEL_POLL);
-    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-    loop {
-        tokio::select! {
-            status = &mut wait => return Outcome::Exited(status),
-            () = tokio::time::sleep_until(deadline) => return Outcome::TimedOut,
-            _ = ticker.tick() => {
-                if cancel.is_cancelled() {
-                    return Outcome::Cancelled;
-                }
-            }
-        }
+    if cancel.is_cancelled() {
+        return Outcome::Cancelled;
+    }
+    tokio::select! {
+        biased;
+        () = cancel.cancelled() => Outcome::Cancelled,
+        status = child.inner_mut().wait() => Outcome::Exited(status),
+        () = tokio::time::sleep_until(deadline) => Outcome::TimedOut,
     }
 }
 
@@ -294,6 +288,13 @@ where
             )));
         }
     }
+    if matches!(outcome, Outcome::Cancelled) {
+        for r in &readers {
+            r.abort();
+        }
+        let _ = tokio::time::timeout(CANCEL_REAP_TIMEOUT, child.inner_mut().wait()).await;
+        return Err(HrnError::Cancelled);
+    }
     if !leader_exited && !matches!(outcome, Outcome::Exited(Err(_))) {
         match tokio::time::timeout(REAP_TIMEOUT, child.inner_mut().wait()).await {
             Ok(Ok(_)) => {}
@@ -302,23 +303,7 @@ where
         }
     }
 
-    let drained = tokio::time::timeout(DRAIN_TIMEOUT, async {
-        for r in &mut readers {
-            if let Err(err) = r.await {
-                local_warnings.push(format!("output reader failed: {err}"));
-            }
-        }
-    })
-    .await;
-    if drained.is_err() {
-        for r in &readers {
-            r.abort();
-        }
-        local_warnings.push(
-            "output pipes stayed open after the process tree was killed (a descendant escaped the job)"
-                .to_owned(),
-        );
-    }
+    drain_readers(&mut readers, &mut local_warnings).await;
 
     let timed_out = matches!(outcome, Outcome::TimedOut);
     let exit_code = match outcome {
@@ -342,6 +327,29 @@ where
         truncated: out_trunc || err_trunc,
         warnings: all_warnings,
     })
+}
+
+async fn drain_readers(
+    readers: &mut [tokio::task::JoinHandle<()>],
+    local_warnings: &mut Vec<String>,
+) {
+    let drained = tokio::time::timeout(DRAIN_TIMEOUT, async {
+        for r in readers.iter_mut() {
+            if let Err(err) = r.await {
+                local_warnings.push(format!("output reader failed: {err}"));
+            }
+        }
+    })
+    .await;
+    if drained.is_err() {
+        for r in readers.iter() {
+            r.abort();
+        }
+        local_warnings.push(
+            "output pipes stayed open after the process tree was killed (a descendant escaped the job)"
+                .to_owned(),
+        );
+    }
 }
 
 /// Everything one pipe-reader task needs.

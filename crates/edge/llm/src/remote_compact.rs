@@ -16,8 +16,6 @@ use hrn_kernel::{CancelFlag, HrnError, Msg, RemoteCompaction, Result};
 use serde_json::{Value, json};
 use std::time::Duration;
 
-/// Cancellation poll period while awaiting a remote compaction HTTP response.
-const CANCEL_POLL: Duration = Duration::from_millis(100);
 /// Default block duration (seconds) when a subscription account hits 429 without `Retry-After`.
 const DEFAULT_POOL_BLOCK_SECS: u64 = 60;
 
@@ -256,22 +254,9 @@ async fn cancellable_post_raw(
     timeout: Duration,
     cancel: &CancelFlag,
 ) -> Result<HttpResponse> {
-    if cancel.is_cancelled() {
-        return Err(HrnError::Cancelled);
-    }
-    let fut = http.post_raw(url, headers, body, timeout);
-    tokio::pin!(fut);
-    let mut ticker = tokio::time::interval(CANCEL_POLL);
-    loop {
-        tokio::select! {
-            res = &mut fut => return res,
-            _ = ticker.tick() => {
-                if cancel.is_cancelled() {
-                    return Err(HrnError::Cancelled);
-                }
-            }
-        }
-    }
+    cancel
+        .race(http.post_raw(url, headers, body, timeout))
+        .await
 }
 
 /// Parse a `/responses/compact` JSON payload into [`RemoteCompaction`].

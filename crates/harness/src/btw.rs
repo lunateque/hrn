@@ -4,9 +4,11 @@
 use crate::compaction::project_branch;
 use crate::runtime::AgentRuntime;
 use hrn_kernel::{
-    BoxFuture, CancelFlag, ChunkSink, HrnError, LlmChunk, LlmRequest, Msg, Result, ThinkingLevel,
+    BoxFuture, CancelFlag, ChunkSink, HrnError, LlmChunk, LlmRequest, Msg, Result, Role,
+    ThinkingLevel,
 };
 pub use hrn_kernel::{BtwExchange, BtwStatus, BtwTopic, extract_inject_block};
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
 const BTW_SYSTEM_NOTE: &str = "You are answering a side-thread (`/btw`) question about the ongoing session. \
@@ -28,6 +30,46 @@ impl ChunkSink for BtwDeltaSink {
         }
         Box::pin(async {})
     }
+}
+
+/// Ensure every assistant `tool_calls` entry is immediately followed by a matching `Role::Tool`
+/// result (synthesizing a placeholder for tools still running mid-turn) and drop any orphaned
+/// `Role::Tool` messages so side-thread `/btw` requests never fail provider validation.
+fn sanitize_btw_messages(messages: Vec<Msg>) -> Vec<Msg> {
+    let mut out = Vec::with_capacity(messages.len());
+    let mut iter = messages.into_iter().peekable();
+    while let Some(msg) = iter.next() {
+        if msg.role == Role::Assistant && !msg.tool_calls.is_empty() {
+            let calls = msg.tool_calls.clone();
+            out.push(msg);
+            let mut answered = HashSet::new();
+            while iter.peek().is_some_and(|next| next.role == Role::Tool) {
+                let Some(tool_msg) = iter.next() else {
+                    break;
+                };
+                if let Some(id) = &tool_msg.tool_call_id
+                    && calls.iter().any(|c| c.id == *id)
+                    && answered.insert(id.clone())
+                {
+                    out.push(tool_msg);
+                }
+            }
+            for call in &calls {
+                if !answered.contains(&call.id) {
+                    out.push(Msg::tool_result(
+                        &call.id,
+                        &call.name,
+                        "[tool still running]",
+                    ));
+                }
+            }
+        } else if msg.role == Role::Tool {
+            // Drop orphaned tool results with no immediately preceding assistant tool call.
+        } else {
+            out.push(msg);
+        }
+    }
+    out
 }
 
 fn short_title(question: &str) -> String {
@@ -122,10 +164,10 @@ impl AgentRuntime {
         let projected = project_branch(&branch, &policy);
         let mut topic = self.load_or_init_btw_topic(session_id, topic_id, question)?;
 
-        let mut messages =
-            Vec::with_capacity(projected.messages.len() + topic.exchanges.len() * 2 + 2);
+        let sanitized = sanitize_btw_messages(projected.messages);
+        let mut messages = Vec::with_capacity(sanitized.len() + topic.exchanges.len() * 2 + 2);
         messages.push(Msg::system(BTW_SYSTEM_NOTE));
-        messages.extend(projected.messages);
+        messages.extend(sanitized);
         for ex in &topic.exchanges {
             messages.push(Msg::user(format!("[/btw] {}", ex.question)));
             if !ex.answer.is_empty() {
@@ -200,5 +242,67 @@ impl AgentRuntime {
         topic.updated_at_ms = self.clock.now_ms();
         self.save_btw_topic(session_id, &topic)?;
         Ok(topic)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hrn_kernel::ToolCall;
+
+    fn call(id: &str, name: &str) -> ToolCall {
+        ToolCall {
+            id: id.to_owned(),
+            name: name.to_owned(),
+            arguments: "{}".to_owned(),
+            signature: None,
+        }
+    }
+
+    #[test]
+    fn sanitize_inserts_placeholder_for_mid_turn_dangling_tool_use() {
+        let msgs = vec![
+            Msg::user("fix it"),
+            Msg::assistant_tool_calls("", None, vec![call("t1", "bash")]),
+        ];
+        let out = sanitize_btw_messages(msgs);
+        assert_eq!(out.len(), 3);
+        assert_eq!(
+            out.get(2)
+                .map(|m| (&m.role, m.tool_call_id.as_deref(), m.content.as_str())),
+            Some((&Role::Tool, Some("t1"), "[tool still running]"))
+        );
+    }
+
+    #[test]
+    fn sanitize_preserves_completed_tool_and_fills_only_missing_parallel_call() {
+        let msgs = vec![
+            Msg::assistant_tool_calls("", None, vec![call("t1", "read"), call("t2", "bash")]),
+            Msg::tool_result("t1", "read", "ok"),
+            Msg::tool_result("orphan", "grep", "stale"),
+        ];
+        let out = sanitize_btw_messages(msgs);
+        assert_eq!(out.len(), 3);
+        assert_eq!(
+            out.get(1)
+                .map(|m| (m.tool_call_id.as_deref(), m.content.as_str())),
+            Some((Some("t1"), "ok"))
+        );
+        assert_eq!(
+            out.get(2)
+                .map(|m| (m.tool_call_id.as_deref(), m.content.as_str())),
+            Some((Some("t2"), "[tool still running]"))
+        );
+    }
+
+    #[test]
+    fn sanitize_drops_leading_orphan_tool_result() {
+        let msgs = vec![
+            Msg::tool_result("stale", "bash", "output"),
+            Msg::user("hello"),
+        ];
+        let out = sanitize_btw_messages(msgs);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out.first().map(|m| m.role), Some(Role::User));
     }
 }

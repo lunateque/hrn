@@ -40,7 +40,8 @@ pub(crate) async fn stream(
     let headers = build_headers(provider, preset, token, req.session_id.as_deref());
 
     let timeout = Duration::from_secs(provider.timeout_secs.unwrap_or(180));
-    let mut sse = http.post_sse(&url, &headers, body, timeout).await?;
+    let mut sse =
+        crate::common::post_sse_cancellable(http, &url, &headers, body, timeout, cancel).await?;
     read_stream(&mut sse, model_id, cancel, sink).await
 }
 

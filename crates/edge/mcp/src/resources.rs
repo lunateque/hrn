@@ -13,8 +13,6 @@ use tokio::task::JoinSet;
 
 /// Maximum time to wait for servers still finishing initial connection.
 const CONNECT_WAIT_BUDGET: Duration = Duration::from_secs(20);
-/// Cancellation poll cadence while waiting for startup or remote calls.
-const CANCEL_POLL: Duration = Duration::from_millis(50);
 
 /// One resource advertised by a configured MCP server.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -157,8 +155,6 @@ impl McpResources {
         }
         let mut rx = self.inner.ready.clone();
         let deadline = tokio::time::Instant::now() + CONNECT_WAIT_BUDGET;
-        let mut ticker = tokio::time::interval(CANCEL_POLL);
-        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             if *rx.borrow() {
                 return Ok(());
@@ -167,6 +163,8 @@ impl McpResources {
                 return Err(HrnError::Cancelled);
             }
             tokio::select! {
+                biased;
+                () = cancel.cancelled() => return Err(HrnError::Cancelled),
                 changed = rx.changed() => {
                     if changed.is_err() || *rx.borrow() {
                         return Ok(());
@@ -177,11 +175,6 @@ impl McpResources {
                         "timed out after {}s waiting for MCP servers to connect",
                         CONNECT_WAIT_BUDGET.as_secs()
                     )));
-                }
-                _ = ticker.tick() => {
-                    if cancel.is_cancelled() {
-                        return Err(HrnError::Cancelled);
-                    }
                 }
             }
         }

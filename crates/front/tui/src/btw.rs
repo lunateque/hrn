@@ -347,16 +347,22 @@ impl BtwPanel {
             }
             match &ex.status {
                 BtwStatus::Cancelled => {
-                    lines.push(Line::from(Span::styled(
+                    lines.extend(wrap::wrap_text(
                         "[cancelled · partial kept]",
                         theme::fg(theme::WARNING),
-                    )));
+                        width,
+                        &[],
+                        &[],
+                    ));
                 }
                 BtwStatus::Error(err) => {
-                    lines.push(Line::from(Span::styled(
-                        format!("[error: {err}]"),
+                    lines.extend(wrap::wrap_text(
+                        &wrap::sanitize(&format!("[error: {err}]")),
                         theme::fg(theme::ERROR),
-                    )));
+                        width,
+                        &[],
+                        &[],
+                    ));
                 }
                 BtwStatus::Streaming | BtwStatus::Done => {}
             }

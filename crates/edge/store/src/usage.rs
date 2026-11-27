@@ -75,6 +75,22 @@ impl SqliteStore {
             .map_err(|e| store_err("session_usage", e))
     }
 
+    pub(crate) fn last_prompt_tokens(&self, session_id: &str) -> Result<Option<u64>> {
+        use rusqlite::OptionalExtension as _;
+        let raw: Option<i64> = self
+            .lock()
+            .query_row(
+                "SELECT prompt_tokens FROM usage
+                 WHERE session_id = ?1 AND prompt_tokens > 0
+                 ORDER BY id DESC LIMIT 1",
+                params![session_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| store_err("latest_prompt_tokens", e))?;
+        Ok(raw.map(|v| u64::try_from(v).unwrap_or(0)))
+    }
+
     /// Usage by day and model: of every call, or of `only_session`'s own calls.
     pub(crate) fn report_usage(&self, only_session: Option<&str>) -> Result<Vec<UsageRow>> {
         let conn = self.lock();

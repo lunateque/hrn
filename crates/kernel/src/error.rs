@@ -166,6 +166,18 @@ impl CancelFlag {
         Cancelled(self.clone())
     }
 
+    /// Race `fut` against cancellation, returning [`HrnError::Cancelled`] immediately once
+    /// this flag or any ancestor cancels.
+    pub fn race<'a, T, F>(&self, fut: F) -> RaceCancel<'a, T>
+    where
+        F: Future<Output = Result<T>> + Send + 'a,
+    {
+        RaceCancel {
+            cancel: self.cancelled(),
+            fut: Box::pin(fut),
+        }
+    }
+
     /// Check whether cancellation has been requested on this flag or any ancestor.
     pub fn is_cancelled(&self) -> bool {
         let mut cur: Option<&CancelInner> = Some(&self.0);
@@ -198,6 +210,23 @@ impl Future for Cancelled {
         } else {
             Poll::Pending
         }
+    }
+}
+
+/// Future returned by [`CancelFlag::race`]; biased toward immediate cancellation.
+pub struct RaceCancel<'a, T> {
+    cancel: Cancelled,
+    fut: Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>,
+}
+
+impl<T> Future for RaceCancel<'_, T> {
+    type Output = Result<T>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if Pin::new(&mut self.cancel).poll(cx).is_ready() {
+            return Poll::Ready(Err(HrnError::Cancelled));
+        }
+        self.fut.as_mut().poll(cx)
     }
 }
 

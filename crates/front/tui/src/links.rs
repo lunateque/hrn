@@ -46,9 +46,11 @@ pub(crate) fn extract_transcript_links(transcript: &Transcript) -> Vec<HintedLin
             | Entry::Notice(_, text)
             | Entry::Reasoning { text, .. } => extract_from_text(text, &mut raw),
             Entry::Compacted { summary, .. } => extract_from_text(summary, &mut raw),
-            Entry::Tool(card) => {
-                extract_from_text(&card.output, &mut raw);
-                extract_from_text(&card.live, &mut raw);
+            Entry::ToolGroup(group) => {
+                for card in group.cards.iter().rev() {
+                    extract_from_text(&card.output, &mut raw);
+                    extract_from_text(&card.live, &mut raw);
+                }
             }
             Entry::Footer(_) => {}
         }

@@ -11,7 +11,7 @@ use hrn_kernel::{
 use hrn_tui::{App, ApprovalAsk, Inbound, UiEvent, UiReceiver};
 use std::fmt::Write as _;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 fn meta(id: &str) -> SessionMeta {
     SessionMeta {

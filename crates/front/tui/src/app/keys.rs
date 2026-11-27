@@ -346,6 +346,17 @@ impl App {
         if key.code == KeyCode::Esc {
             if !self.completions().is_empty() {
                 self.popup.dismissed_for = Some(self.editor.text());
+            } else if self.focused_agent.is_some() {
+                if key.modifiers.contains(KeyModifiers::SHIFT) {
+                    if self.is_busy() {
+                        self.interrupt();
+                    } else {
+                        self.flash("subagent is not running · press esc for agent hub");
+                    }
+                } else {
+                    self.unfocus_agent();
+                    self.open_agent_hub();
+                }
             } else if self.suspend_loop_on_esc() {
             } else if self.is_busy() {
                 self.interrupt();
@@ -470,12 +481,29 @@ impl App {
         if self.vim.handle_key(key, &mut self.editor) == VimAction::Consumed {
             return;
         }
+        if self.keymap.is("app.editor.newline", key)
+            || matches!(key.code, KeyCode::Char('\n'))
+            || (matches!(key.code, KeyCode::Enter | KeyCode::Char('\r'))
+                && (shift || ctrl || alt || burst))
+        {
+            self.editor.insert_char('\n');
+            return;
+        }
         let recall = self.appearance.recall_cleared_drafts;
         let e = &mut self.editor;
         match key.code {
-            // The follow-up chord with nothing queued starts a normal multiline insert.
-            KeyCode::Enter if shift || alt || burst => e.insert_char('\n'),
-            KeyCode::Enter => self.submit(),
+            KeyCode::Enter => {
+                if self.editor.cursor() > 0
+                    && self.editor.chars().get(self.editor.cursor() - 1) == Some(&'\\')
+                {
+                    self.editor.backspace();
+                    self.editor.insert_char('\n');
+                } else if self.is_busy() && self.editor.is_blank() && !self.images.has_pending() {
+                    self.promote_followup_to_steer();
+                } else {
+                    self.submit();
+                }
+            }
             // AltGr arrives as ctrl+alt on Windows: it types a character.
             KeyCode::Char(c) if ctrl && alt => e.insert_char(c),
             KeyCode::Char('j') if ctrl => e.insert_char('\n'),

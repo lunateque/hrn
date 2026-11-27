@@ -326,6 +326,7 @@ impl ChatBackend {
             btw_active: Arc::default(),
             idle,
             focused_agent: None,
+            focused_on_child: Arc::default(),
             saved_main_settings: None,
             no_title_forced,
             collab_host: None,

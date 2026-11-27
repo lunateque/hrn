@@ -3,7 +3,7 @@
 
 use crate::imgview::ImageTray;
 use crate::render::{self, Ctx};
-use crate::toolfmt;
+pub(crate) use crate::tool_group::{ToolCard, ToolGroup, ToolState};
 use hrn_kernel::{DagNode, DagPayload, ImageAttachment, Msg, Role};
 use ratatui::text::Line;
 use std::path::Path;
@@ -26,60 +26,6 @@ pub(crate) enum Level {
     Error,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ToolState {
-    Running,
-    Awaiting,
-    Done,
-    Failed,
-    Denied,
-    Cancelled,
-}
-
-pub(crate) struct ToolCard {
-    pub(crate) id: String,
-    pub(crate) name: String,
-    pub(crate) arguments: String,
-    pub(crate) key: String,
-    pub(crate) state: ToolState,
-    pub(crate) live: String,
-    pub(crate) output: String,
-    pub(crate) diff: Option<String>,
-    pub(crate) started: Option<Instant>,
-    pub(crate) elapsed: Option<Duration>,
-}
-
-impl ToolCard {
-    fn new(id: &str, name: &str, arguments: &str, started: Option<Instant>) -> Self {
-        Self {
-            id: id.to_owned(),
-            name: name.to_owned(),
-            arguments: arguments.to_owned(),
-            key: toolfmt::key_arg(name, arguments),
-            state: ToolState::Running,
-            live: String::new(),
-            output: String::new(),
-            diff: None,
-            started,
-            elapsed: None,
-        }
-    }
-
-    fn finish(&mut self, output: &str, is_error: bool) {
-        self.state = if !is_error {
-            ToolState::Done
-        } else if output.starts_with("user denied") {
-            ToolState::Denied
-        } else if output.starts_with("cancelled") || output.starts_with("not executed") {
-            ToolState::Cancelled
-        } else {
-            ToolState::Failed
-        };
-        output.clone_into(&mut self.output);
-        self.live.clear();
-    }
-}
-
 pub(crate) enum Entry {
     User(String),
     Steer {
@@ -93,7 +39,7 @@ pub(crate) enum Entry {
         elapsed: Option<Duration>,
         live: bool,
     },
-    Tool(ToolCard),
+    ToolGroup(ToolGroup),
     Compacted {
         method: String,
         summary: String,
@@ -107,7 +53,7 @@ impl Entry {
     /// Shows a spinner or a running clock, so it is repainted on every frame.
     fn is_animated(&self) -> bool {
         match self {
-            Self::Tool(card) => matches!(card.state, ToolState::Running | ToolState::Awaiting),
+            Self::ToolGroup(group) => group.has_active(),
             Self::Reasoning { live, .. } => *live,
             _ => false,
         }
@@ -169,9 +115,19 @@ impl Transcript {
     pub(crate) fn set_tools_visible(&mut self, visible: bool) {
         self.tools_visible = visible;
         for item in &mut self.items {
-            if matches!(item.entry, Entry::Tool(_)) {
+            if matches!(item.entry, Entry::ToolGroup(_)) {
                 item.cache = None;
             }
+        }
+    }
+
+    fn close_open_tool_group(&mut self) {
+        if let Some(last) = self.items.last_mut()
+            && let Entry::ToolGroup(group) = &mut last.entry
+            && !group.closed
+        {
+            group.closed = true;
+            last.cache = None;
         }
     }
 
@@ -192,6 +148,9 @@ impl Transcript {
         entry: Entry,
         images: Vec<(Option<usize>, ImageAttachment)>,
     ) -> usize {
+        if !matches!(entry, Entry::ToolGroup(_)) {
+            self.close_open_tool_group();
+        }
         self.items.push(Item {
             // Thinking is shown by default; a toggle collapses it to a one-line label.
             expanded: matches!(entry, Entry::Reasoning { .. }) && self.thinking_visible,
@@ -243,7 +202,7 @@ impl Transcript {
         let Some(item) = self.items.get_mut(index) else {
             return &[];
         };
-        if !self.tools_visible && matches!(item.entry, Entry::Tool(_)) {
+        if !self.tools_visible && matches!(item.entry, Entry::ToolGroup(_)) {
             return &[];
         }
         let stale = item.entry.is_animated()
@@ -263,9 +222,9 @@ impl Transcript {
     }
 
     /// How many leading entries are settled: nothing about them can change any more, so they
-    /// may be written into the terminal's scrollback. A streaming message, a running or
-    /// awaiting tool card, a live thinking block and a queued steer are not settled, and
-    /// neither is anything after them.
+    /// may be written into the terminal's scrollback. A streaming message, an open or active
+    /// tool group, a live thinking block and a queued steer are not settled, and neither is
+    /// anything after them.
     pub(crate) fn settled(&self) -> usize {
         self.items
             .iter()
@@ -273,9 +232,7 @@ impl Transcript {
             .take_while(|(index, item)| match &item.entry {
                 Entry::Assistant(_) => self.open_text != Some(*index),
                 Entry::Reasoning { live, .. } => !live,
-                Entry::Tool(card) => {
-                    !matches!(card.state, ToolState::Running | ToolState::Awaiting)
-                }
+                Entry::ToolGroup(group) => group.is_settled(),
                 Entry::Steer { state, .. } => *state != SteerState::Queued,
                 Entry::User(_) | Entry::Compacted { .. } | Entry::Notice(..) | Entry::Footer(_) => {
                     true
@@ -339,28 +296,52 @@ impl Transcript {
         }
     }
 
-    pub(crate) fn tool_start(&mut self, id: &str, name: &str, arguments: &str, now: Instant) {
-        self.close_blocks(now);
-        self.push(Entry::Tool(ToolCard::new(id, name, arguments, Some(now))));
+    fn push_tool_card(&mut self, card: ToolCard) {
+        if let Some(last) = self.items.last_mut()
+            && let Entry::ToolGroup(group) = &mut last.entry
+            && !group.closed
+        {
+            group.push(card);
+            last.cache = None;
+            return;
+        }
+        self.push(Entry::ToolGroup(ToolGroup::new(card)));
     }
 
-    fn tool_index(&self, id: &str) -> Option<usize> {
+    pub(crate) fn tool_start(&mut self, id: &str, name: &str, arguments: &str, now: Instant) {
+        self.close_blocks(now);
+        self.push_tool_card(ToolCard::new(id, name, arguments, Some(now)));
+    }
+
+    fn tool_loc(&self, id: &str) -> Option<(usize, usize)> {
         self.items
             .iter()
-            .rposition(|item| matches!(&item.entry, Entry::Tool(card) if card.id == id))
+            .enumerate()
+            .rev()
+            .find_map(|(item_idx, item)| {
+                let Entry::ToolGroup(group) = &item.entry else {
+                    return None;
+                };
+                group
+                    .cards
+                    .iter()
+                    .rposition(|card| card.id == id)
+                    .map(|card_idx| (item_idx, card_idx))
+            })
     }
 
     pub(crate) fn tool(&self, id: &str) -> Option<&ToolCard> {
-        match self.entry(self.tool_index(id)?)? {
-            Entry::Tool(card) => Some(card),
+        let (item_idx, card_idx) = self.tool_loc(id)?;
+        match self.entry(item_idx)? {
+            Entry::ToolGroup(group) => group.cards.get(card_idx),
             _ => None,
         }
     }
 
     pub(crate) fn tool_mut(&mut self, id: &str) -> Option<&mut ToolCard> {
-        let index = self.tool_index(id)?;
-        match self.touch(index)? {
-            Entry::Tool(card) => Some(card),
+        let (item_idx, card_idx) = self.tool_loc(id)?;
+        match self.touch(item_idx)? {
+            Entry::ToolGroup(group) => group.cards.get_mut(card_idx),
             _ => None,
         }
     }
@@ -388,13 +369,19 @@ impl Transcript {
         images: Vec<(Option<usize>, ImageAttachment)>,
         now: Instant,
     ) {
-        if let Some(index) = self.tool_index(id) {
-            if let Some(Entry::Tool(card)) = self.touch(index) {
+        if let Some((item_idx, card_idx)) = self.tool_loc(id)
+            && let Some(Entry::ToolGroup(group)) = self.touch(item_idx)
+        {
+            if let Some(card) = group.cards.get_mut(card_idx) {
                 card.finish(output, is_error);
                 card.diff = diff.map(str::to_owned);
                 card.elapsed = card.started.map(|s| now.duration_since(s));
             }
-            self.attach_images(index, images);
+            if !images.is_empty()
+                && let Some(slot) = group.images.get_mut(card_idx)
+            {
+                slot.extend(images);
+            }
         }
     }
 
@@ -463,18 +450,32 @@ impl Transcript {
     pub(crate) fn turn_finished(&mut self, now: Instant) {
         self.close_blocks(now);
         for item in &mut self.items {
-            if let Entry::Tool(card) = &mut item.entry
-                && matches!(card.state, ToolState::Running | ToolState::Awaiting)
-            {
-                card.state = ToolState::Cancelled;
-                card.elapsed = card.started.map(|s| now.duration_since(s));
-                item.cache = None;
+            if let Entry::ToolGroup(group) = &mut item.entry {
+                let mut changed = !group.closed;
+                group.closed = true;
+                for card in &mut group.cards {
+                    if matches!(card.state, ToolState::Running | ToolState::Awaiting) {
+                        card.state = ToolState::Cancelled;
+                        card.elapsed = card.started.map(|s| now.duration_since(s));
+                        changed = true;
+                    }
+                }
+                if changed {
+                    item.cache = None;
+                }
             }
         }
     }
 
-    /// Replace everything with a stored branch, populating `tray` with stored/referenced images.
-    pub(crate) fn load_with_tray(&mut self, nodes: &[DagNode], tray: &mut ImageTray, cwd: &Path) {
+    /// Replace everything with a stored branch; when `running` is `true`, trailing unanswered tool
+    /// calls are kept in [`ToolState::Running`] instead of being marked [`ToolState::Cancelled`].
+    pub(crate) fn load_with_tray_running(
+        &mut self,
+        nodes: &[DagNode],
+        tray: &mut ImageTray,
+        cwd: &Path,
+        running: bool,
+    ) {
         self.clear();
         tray.clear();
         for node in nodes {
@@ -504,6 +505,29 @@ impl Transcript {
                 | DagPayload::SessionExit { .. }
                 | DagPayload::Label { .. }
                 | DagPayload::ModelChange { .. } => {}
+            }
+        }
+        if running
+            && let Some(last) = self.items.last_mut()
+            && let Entry::ToolGroup(group) = &mut last.entry
+        {
+            for card in group.cards.iter_mut().rev() {
+                if card.state == ToolState::Cancelled {
+                    card.state = ToolState::Running;
+                    last.cache = None;
+                } else {
+                    break;
+                }
+            }
+        }
+        let last_idx = self.items.len().checked_sub(1);
+        for (idx, item) in self.items.iter_mut().enumerate() {
+            if let Entry::ToolGroup(group) = &mut item.entry {
+                let keep_open = running && last_idx == Some(idx);
+                if !keep_open && !group.closed {
+                    group.closed = true;
+                    item.cache = None;
+                }
             }
         }
     }
@@ -542,22 +566,28 @@ impl Transcript {
                 for call in &msg.tool_calls {
                     let mut card = ToolCard::new(&call.id, &call.name, &call.arguments, None);
                     card.state = ToolState::Cancelled;
-                    self.push(Entry::Tool(card));
+                    self.push_tool_card(card);
                 }
             }
             Role::Tool => {
                 if let Some(id) = &msg.tool_call_id
-                    && let Some(index) = self.tool_index(id)
+                    && let Some((item_idx, card_idx)) = self.tool_loc(id)
                 {
-                    if let Some(Entry::Tool(card)) = self.touch(index) {
-                        card.finish(&msg.content, msg.is_error);
-                    }
                     let imgs: Vec<(Option<usize>, ImageAttachment)> = msg
                         .images
                         .iter()
                         .map(|img| (Some(tray.register(img.clone())), img.clone()))
                         .collect();
-                    self.attach_images(index, imgs);
+                    if let Some(Entry::ToolGroup(group)) = self.touch(item_idx) {
+                        if let Some(card) = group.cards.get_mut(card_idx) {
+                            card.finish(&msg.content, msg.is_error);
+                        }
+                        if !imgs.is_empty()
+                            && let Some(slot) = group.images.get_mut(card_idx)
+                        {
+                            slot.extend(imgs);
+                        }
+                    }
                 }
             }
         }

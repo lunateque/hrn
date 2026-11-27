@@ -203,6 +203,8 @@ pub struct App {
     focused_agent: Option<String>,
     /// Main session settings stashed while focused on a child agent.
     saved_main_settings: Option<Settings>,
+    /// Main session last-prompt-tokens stashed while focused on a child agent (fallback if backend returns 0).
+    saved_main_prompt_tokens: u64,
     /// Armed first `←` press on an empty editor for double-`←` gesture.
     left_armed: Option<Instant>,
     /// `[tui] pinned_agents` display mode.
@@ -307,6 +309,7 @@ impl App {
             agents_hub: None,
             focused_agent: None,
             saved_main_settings: None,
+            saved_main_prompt_tokens: 0,
             left_armed: None,
             pinned_agents: options.pinned_agents,
             subagent_live_preview: options.subagent_live_preview,

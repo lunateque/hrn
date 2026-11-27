@@ -155,9 +155,11 @@ impl HttpMcpTransport {
             HrnError::Internal(format!("MCP `{}`: encode JSON-RPC: {e}", self.server_name))
         })?;
         let headers = self.build_headers().await?;
-        let resp = self
-            .http
-            .post_raw(&self.url, &headers, Bytes::from(body), self.timeout)
+        let resp = cancel
+            .race(
+                self.http
+                    .post_raw(&self.url, &headers, Bytes::from(body), self.timeout),
+            )
             .await?;
         if cancel.is_cancelled() {
             return Err(HrnError::Cancelled);

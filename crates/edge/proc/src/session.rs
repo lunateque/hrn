@@ -12,9 +12,7 @@ use crate::session_wire::{
     INIT, Marked, PWD, Pipe, Sink, call_script, make_marker, pump_to_marker, single_quote,
 };
 use crate::shell::{Shell, resolve_shell};
-use crate::{
-    CANCEL_POLL, MIN_OUTPUT_BYTES, RunOutput, resolve_program, shell_env, wrap_tree_guard,
-};
+use crate::{MIN_OUTPUT_BYTES, RunOutput, resolve_program, shell_env, wrap_tree_guard};
 use hrn_kernel::{CancelFlag, HrnError, Result};
 use process_wrap::tokio::{ChildWrapper, CommandWrap};
 use std::collections::BTreeMap;
@@ -349,7 +347,9 @@ impl ShellSession {
                 );
             }
             None => {
-                self.live = None;
+                if let Some(mut live) = self.live.take() {
+                    let _ = live.child.start_kill();
+                }
                 self.died = true;
                 warnings.push(
                     "the shell did not recover after its command was killed; a new shell (fresh cwd and environment) starts on the next call"
@@ -426,13 +426,15 @@ async fn drive(
     let deadline = tokio::time::Instant::now() + timeout;
     // Meaningful once interrupted: when to interrupt again, and when to give up on the shell.
     let (mut next_interrupt, mut give_up) = (deadline, deadline);
-    let mut ticker = tokio::time::interval(CANCEL_POLL);
-    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     let joined = loop {
         let cause = tokio::select! {
+            biased;
+            () = cancel.cancelled(), if interrupt.is_none() => {
+                interrupt = Some(Interrupt::Cancel);
+                break None;
+            }
             res = &mut work => break Some(res),
             () = tokio::time::sleep_until(deadline), if interrupt.is_none() => Some(Interrupt::Timeout),
-            _ = ticker.tick(), if interrupt.is_none() => cancel.is_cancelled().then_some(Interrupt::Cancel),
             () = tokio::time::sleep_until(next_interrupt), if interrupt.is_some() => interrupt,
             () = tokio::time::sleep_until(give_up), if interrupt.is_some() => break None,
         };
