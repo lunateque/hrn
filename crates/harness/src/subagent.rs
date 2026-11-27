@@ -323,9 +323,14 @@ impl Launch<'_> {
         if profile.advisor != Some(true) {
             child_runtime = child_runtime.without_advisor();
         }
-        if let Some(max_steps) = profile.max_steps {
-            child_runtime = child_runtime.with_max_steps(max_steps);
-        }
+        // A child always gets an explicit step budget from `[task]` config (a per-call
+        // `max_steps` in `p.scope` still overrides it below); it never inherits the parent's.
+        let max_steps = self.runtime.task_config().max_steps_for(
+            &profile.name,
+            &profile.aliases,
+            profile.max_steps,
+        );
+        child_runtime = child_runtime.with_max_steps(max_steps);
         if !p.scope.is_empty() {
             child_runtime = p.scope.apply_to_runtime(&child_runtime, child_cwd.clone());
         }
@@ -1308,7 +1313,7 @@ fn insert_scope_schema(props: &mut Map<String, Value>) {
     );
     props.insert(
         "max_steps".to_owned(),
-        json!({"type": "integer", "description": "Optional hard step limit override."}),
+        json!({"type": "integer", "description": "Optional step limit for this run; overrides `[task] max_steps` / `[task.agent_max_steps]` (0 = unlimited)."}),
     );
 }
 

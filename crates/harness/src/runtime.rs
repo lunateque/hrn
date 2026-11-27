@@ -44,7 +44,9 @@ pub struct HarnessConfig {
     /// Optional explicit service tier applied to subagent turns (`[llm.tier] subagent`);
     /// `None` inherits the parent session's active tier.
     pub subagent_tier: Option<hrn_kernel::Tier>,
-    /// Maximum LLM + tool iterations per user turn (default 40).
+    /// Maximum LLM + tool iterations per user turn (`0` = unlimited, the default for the main
+    /// agent; subagents always get an explicit budget from `[task.max_steps]` /
+    /// `[task.agent_max_steps]`).
     pub max_steps: usize,
     /// Role alias used for Tier 3 summarization (default `"fast"`); falls back to the session
     /// model when the router does not know the alias.
@@ -80,7 +82,7 @@ impl Default for HarnessConfig {
             module_sections: Vec::new(),
             subagent: false,
             subagent_tier: None,
-            max_steps: 40,
+            max_steps: 0,
             fast_model_role: "fast".to_owned(),
             compaction: CompactionPolicy::default(),
             context_promotion: false,

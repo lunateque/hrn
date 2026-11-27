@@ -431,6 +431,7 @@ fn harness_config(
         recover_inline_edits,
         auto_title: cfg.auto_title,
         title_refresh_on_replan: cfg.title_refresh_on_replan,
+        max_steps: cfg.max_steps,
         ..HarnessConfig::default()
     }
 }

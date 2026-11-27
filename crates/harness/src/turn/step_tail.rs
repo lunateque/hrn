@@ -110,7 +110,7 @@ impl AgentRuntime {
     }
 
     /// Run the LLM + tool step loop until the model finishes without tool calls (or cancellation /
-    /// step cap / error stops it).
+    /// step cap / error stops it). A `max_steps` of `0` means no step cap.
     pub(crate) async fn drive_steps(
         &self,
         meta: &mut SessionMeta,
@@ -124,7 +124,7 @@ impl AgentRuntime {
             if io.cancel.is_cancelled() {
                 return Err(HrnError::Cancelled);
             }
-            if ctx.st.steps >= self.config.max_steps {
+            if self.config.max_steps != 0 && ctx.st.steps >= self.config.max_steps {
                 return Err(HrnError::MaxSteps(self.config.max_steps));
             }
             self.apply_control(meta, turn_id, control, io).await?;

@@ -31,6 +31,8 @@ auto_resume = false
 branch_summary = false
 auto_title = true
 title_refresh_on_replan = true
+# Per-turn LLM + tool step cap of the main agent (`0` = unlimited).
+max_steps = 0
 
 [gc]
 retain_days = 90
@@ -99,6 +101,8 @@ out_enabled = true
 max_concurrency = 32
 max_recursion_depth = 2
 soft_request_budget = 200
+# Step budget of a subagent whose profile has no own `max_steps` (`0` = unlimited).
+max_steps = 150
 max_runtime_ms = 0
 agent_idle_ttl_ms = 420000
 async = true
@@ -108,6 +112,10 @@ enable_effort = false
 per_call_model = "off"
 per_call_model_allow = []
 agent_models = {}
+# Per-profile subagent step budgets (`0` = unlimited); `[task] max_steps` covers profiles
+# missing here. Built-in: scout 100, sonic 60, task 200, plan 120, reviewer 100,
+# security-reviewer 100. Setting the table replaces the whole built-in set, e.g.
+# agent_max_steps = { task = 500, scout = 100, sonic = 60, plan = 120, reviewer = 100 }
 structured = false
 disabled_agents = []
 

@@ -2518,9 +2518,14 @@ impl AgentRegistry {
             .with_tools(child_tools)
             .without_advisor()
             .as_subagent();
-        if let Some(max_steps) = spec.profile.max_steps {
-            child_rt = child_rt.with_max_steps(max_steps);
-        }
+        // Same rule as at spawn time: the budget comes from `[task]` config, never from the
+        // (possibly unlimited) host runtime; a per-call `max_steps` in `spec.scope` wins below.
+        let max_steps = base_rt.task_config().max_steps_for(
+            &spec.profile.name,
+            &spec.profile.aliases,
+            spec.profile.max_steps,
+        );
+        child_rt = child_rt.with_max_steps(max_steps);
         if !spec.scope.is_empty() {
             child_rt = spec.scope.apply_to_runtime(&child_rt, spec.cwd.clone());
         }
@@ -2805,7 +2810,7 @@ fn resolve_profile(
             thinking: None,
             tools: Vec::new(),
             deny_tools: Vec::new(),
-            max_steps: Some(25),
+            max_steps: None,
             spawns: None,
             output: None,
             blocking: false,

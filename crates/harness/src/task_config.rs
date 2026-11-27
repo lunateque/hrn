@@ -29,6 +29,7 @@ struct RawTaskConfig {
     max_concurrency: usize,
     max_recursion_depth: usize,
     soft_request_budget: usize,
+    max_steps: usize,
     max_runtime_ms: u64,
     agent_idle_ttl_ms: u64,
     #[serde(rename = "async")]
@@ -39,6 +40,7 @@ struct RawTaskConfig {
     per_call_model: String,
     per_call_model_allow: Vec<String>,
     agent_models: BTreeMap<String, String>,
+    agent_max_steps: BTreeMap<String, usize>,
     structured: bool,
     isolation: RawTaskIsolationConfig,
     disabled_agents: Vec<String>,
@@ -76,6 +78,8 @@ pub struct TaskConfig {
     pub max_recursion_depth: usize,
     /// Soft LLM request budget per subagent run (1.5x triggers a hard stop; `0` disables).
     pub soft_request_budget: usize,
+    /// Per-turn step budget for a subagent whose profile has no own limit (`0` = unlimited).
+    pub max_steps: usize,
     /// Maximum wall-clock runtime per subagent run in milliseconds (`0` = unlimited).
     pub max_runtime_ms: u64,
     /// Idle duration in milliseconds before a completed agent transitions from `Idle` to `Parked`.
@@ -95,6 +99,8 @@ pub struct TaskConfig {
     pub per_call_model_allow: Vec<String>,
     /// Per-agent model selector overrides (`[task.agent_models] <agent> = "<selector>"`).
     pub agent_models: BTreeMap<String, String>,
+    /// Per-agent step budget overrides (`[task.agent_max_steps] <agent> = <n>`, `0` = unlimited).
+    pub agent_max_steps: BTreeMap<String, usize>,
     /// Expose structured `outputSchema` / `schemaMode` fields on `task` items.
     pub structured: bool,
     /// Worktree isolation settings (`[task.isolation]`).
@@ -109,6 +115,7 @@ fn load_defaults() -> TaskConfig {
             max_concurrency: raw.max_concurrency,
             max_recursion_depth: raw.max_recursion_depth,
             soft_request_budget: raw.soft_request_budget,
+            max_steps: raw.max_steps,
             max_runtime_ms: raw.max_runtime_ms,
             agent_idle_ttl_ms: raw.agent_idle_ttl_ms,
             async_mode: raw.async_mode,
@@ -118,6 +125,7 @@ fn load_defaults() -> TaskConfig {
             per_call_model: raw.per_call_model,
             per_call_model_allow: raw.per_call_model_allow,
             agent_models: raw.agent_models,
+            agent_max_steps: raw.agent_max_steps,
             structured: raw.structured,
             isolation: TaskIsolationConfig {
                 enabled: raw.isolation.enabled,
@@ -127,10 +135,12 @@ fn load_defaults() -> TaskConfig {
             disabled_agents: raw.disabled_agents,
         },
         // `task.defaults.json` is unit-tested; this fallback prevents any panic if edited badly.
+        // Every profile then falls back to the generic `[task.max_steps]`.
         Err(_) => TaskConfig {
             max_concurrency: 32,
             max_recursion_depth: 2,
             soft_request_budget: 200,
+            max_steps: 150,
             max_runtime_ms: 0,
             agent_idle_ttl_ms: 420_000,
             async_mode: true,
@@ -140,6 +150,7 @@ fn load_defaults() -> TaskConfig {
             per_call_model: "off".to_owned(),
             per_call_model_allow: Vec::new(),
             agent_models: BTreeMap::new(),
+            agent_max_steps: BTreeMap::new(),
             structured: false,
             isolation: TaskIsolationConfig {
                 enabled: false,
@@ -192,6 +203,35 @@ impl TaskConfig {
             .map(|(_, v)| v.as_str())
     }
 
+    /// Look up a configured `[task.agent_max_steps]` override for `profile_name` or any of its
+    /// `aliases` (case-insensitive).
+    #[must_use]
+    pub fn agent_max_steps_for(&self, profile_name: &str, aliases: &[String]) -> Option<usize> {
+        self.agent_max_steps
+            .iter()
+            .find(|(k, _)| {
+                k.eq_ignore_ascii_case(profile_name)
+                    || aliases.iter().any(|a| k.eq_ignore_ascii_case(a))
+            })
+            .map(|(_, v)| *v)
+    }
+
+    /// Step budget for one subagent run: `[task.agent_max_steps]` entry for `profile_name` (or an
+    /// alias) wins over the profile's own front-matter `max_steps`, which wins over the generic
+    /// [`Self::max_steps`]. `0` means unlimited. A per-call `max_steps` argument overrides the
+    /// result of this in [`crate::scope::ScopePolicy::apply_to_runtime`].
+    #[must_use]
+    pub fn max_steps_for(
+        &self,
+        profile_name: &str,
+        aliases: &[String],
+        profile_max_steps: Option<usize>,
+    ) -> usize {
+        self.agent_max_steps_for(profile_name, aliases)
+            .or(profile_max_steps)
+            .unwrap_or(self.max_steps)
+    }
+
     /// Validate enum-like string fields and bounds.
     pub fn validate(&self) -> Result {
         if self.max_concurrency == 0 {
@@ -226,6 +266,7 @@ mod tests {
         assert_eq!(raw.max_concurrency, 32);
         assert_eq!(raw.max_recursion_depth, 2);
         assert_eq!(raw.soft_request_budget, 200);
+        assert_eq!(raw.max_steps, 150);
         assert_eq!(raw.max_runtime_ms, 0);
         assert_eq!(raw.agent_idle_ttl_ms, 420_000);
         assert!(raw.async_mode);
@@ -235,6 +276,14 @@ mod tests {
         assert_eq!(raw.per_call_model, "off");
         assert!(raw.per_call_model_allow.is_empty());
         assert!(raw.agent_models.is_empty());
+        let mut expected_steps = BTreeMap::new();
+        expected_steps.insert("scout".to_owned(), 100usize);
+        expected_steps.insert("sonic".to_owned(), 60);
+        expected_steps.insert("task".to_owned(), 200);
+        expected_steps.insert("plan".to_owned(), 120);
+        expected_steps.insert("reviewer".to_owned(), 100);
+        expected_steps.insert("security-reviewer".to_owned(), 100);
+        assert_eq!(raw.agent_max_steps, expected_steps);
         assert!(!raw.structured);
         assert!(!raw.isolation.enabled);
         assert_eq!(raw.isolation.merge, "patch");
@@ -244,6 +293,47 @@ mod tests {
         let cfg = TaskConfig::default();
         assert_eq!(cfg.hard_request_budget(), 300);
         assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn max_steps_precedence_and_alias_lookup() {
+        let cfg = TaskConfig::default();
+        // Built-in profile budgets come from `[task.agent_max_steps]`, not the profiles.
+        assert_eq!(cfg.max_steps_for("scout", &[], None), 100);
+        assert_eq!(cfg.max_steps_for("task", &[], None), 200);
+        // Aliases resolve case-insensitively, like `model_override_for`.
+        let aliases = vec!["SCOUT".to_owned()];
+        assert_eq!(cfg.max_steps_for("Scout", &[], None), 100);
+        assert_eq!(cfg.max_steps_for("whatever", &aliases, None), 100);
+        assert_eq!(
+            cfg.max_steps_for("whatever", &["explore".to_owned()], None),
+            150
+        );
+        // A profile's own front-matter limit beats the generic fallback but not the map.
+        assert_eq!(cfg.max_steps_for("custom", &[], Some(7)), 7);
+        assert_eq!(cfg.max_steps_for("scout", &[], Some(7)), 100);
+        // Unknown profiles fall back to `[task.max_steps]`; `0` there means unlimited.
+        assert_eq!(cfg.max_steps_for("custom", &[], None), 150);
+        let unlimited = TaskConfig {
+            max_steps: 0,
+            ..TaskConfig::default()
+        };
+        assert_eq!(unlimited.max_steps_for("custom", &[], None), 0);
+
+        let mut agent_max_steps = BTreeMap::new();
+        agent_max_steps.insert("Reviewer".to_owned(), 0usize);
+        agent_max_steps.insert("auditor".to_owned(), 9usize);
+        let tuned = TaskConfig {
+            agent_max_steps,
+            ..TaskConfig::default()
+        };
+        // An explicit map entry (even `0` = unlimited) wins over front matter.
+        assert_eq!(tuned.max_steps_for("reviewer", &[], Some(25)), 0);
+        assert_eq!(tuned.max_steps_for("auditor", &[], Some(25)), 9);
+        assert_eq!(tuned.max_steps_for("auditor", &[], None), 9);
+        // A user map replaces the merged entry set, so profiles missing from it fall back
+        // to the generic `[task.max_steps]`.
+        assert_eq!(tuned.max_steps_for("scout", &[], None), 150);
     }
 
     #[test]
@@ -257,6 +347,7 @@ mod tests {
         assert!(cfg.isolation.enabled);
         assert_eq!(cfg.isolation.merge, "patch");
         assert_eq!(cfg.agent_idle_ttl_ms, 420_000);
+        assert_eq!(cfg.max_steps, 150);
         assert!(cfg.validate().is_ok());
 
         let bad_model = TaskConfig {
