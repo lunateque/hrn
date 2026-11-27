@@ -305,7 +305,10 @@ mod tests {
         let aliases = vec!["SCOUT".to_owned()];
         assert_eq!(cfg.max_steps_for("Scout", &[], None), 100);
         assert_eq!(cfg.max_steps_for("whatever", &aliases, None), 100);
-        assert_eq!(cfg.max_steps_for("whatever", &["explore".to_owned()], None), 150);
+        assert_eq!(
+            cfg.max_steps_for("whatever", &["explore".to_owned()], None),
+            150
+        );
         // A profile's own front-matter limit beats the generic fallback but not the map.
         assert_eq!(cfg.max_steps_for("custom", &[], Some(7)), 7);
         assert_eq!(cfg.max_steps_for("scout", &[], Some(7)), 100);

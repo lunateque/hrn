@@ -325,10 +325,11 @@ impl Launch<'_> {
         }
         // A child always gets an explicit step budget from `[task]` config (a per-call
         // `max_steps` in `p.scope` still overrides it below); it never inherits the parent's.
-        let max_steps = self
-            .runtime
-            .task_config()
-            .max_steps_for(&profile.name, &profile.aliases, profile.max_steps);
+        let max_steps = self.runtime.task_config().max_steps_for(
+            &profile.name,
+            &profile.aliases,
+            profile.max_steps,
+        );
         child_runtime = child_runtime.with_max_steps(max_steps);
         if !p.scope.is_empty() {
             child_runtime = p.scope.apply_to_runtime(&child_runtime, child_cwd.clone());
