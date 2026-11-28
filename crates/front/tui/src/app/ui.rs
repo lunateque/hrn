@@ -131,6 +131,7 @@ impl App {
         let pre_len = hud.len() + pinned.lines.len();
         let pre_rows = to_u16(pre_len);
         let bottom = self.bottom(max_rows.saturating_sub(pre_len));
+        self.sync_pending_images();
         let pending = self.images.pending_labels();
         let (rows, pending_rows) = match &bottom {
             Bottom::Prompt(layout) => (
