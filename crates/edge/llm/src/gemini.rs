@@ -52,7 +52,8 @@ pub(crate) async fn stream(
     headers.extend(provider.resolve_env_headers());
 
     let timeout = Duration::from_secs(provider.timeout_secs.unwrap_or(180));
-    let mut sse = http.post_sse(&url, &headers, body, timeout).await?;
+    let mut sse =
+        crate::common::post_sse_cancellable(http, &url, &headers, body, timeout, cancel).await?;
     let mut asm = GeminiAssembler::new(model_id.to_owned());
     while let Some(ev) = next_event(&mut sse, cancel).await? {
         let data = ev.data.trim();

@@ -46,14 +46,16 @@ impl Tool for WebSearchTool {
         summary_of(args, "query")
     }
 
-    fn execute(&self, _ctx: &ToolContext, args: Value) -> BoxFuture<Result<ToolOutput>> {
+    fn execute(&self, ctx: &ToolContext, args: Value) -> BoxFuture<Result<ToolOutput>> {
         let http = self.http.clone();
         let cfg = self.cfg.clone();
+        let cancel = ctx.cancel.clone();
         Box::pin(async move {
             let text = required_str(&args, "query", "web_search")?;
             let limit = bounded_usize(&args, "limit", DEFAULT_RESULTS, 1, MAX_RESULTS);
             let recency = opt_str(&args, "recency");
-            search_web(&http, &cfg, text, limit, recency)
+            cancel
+                .race(search_web(&http, &cfg, text, limit, recency))
                 .await
                 .map(ToolOutput::ok)
         })

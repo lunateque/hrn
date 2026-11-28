@@ -26,6 +26,7 @@ pub struct InboxItem {
 struct State {
     queues: HashMap<String, VecDeque<InboxItem>>,
     pending: HashMap<String, usize>,
+    steer_versions: HashMap<String, u64>,
     version: u64,
     wakers: Vec<Waker>,
 }
@@ -188,6 +189,23 @@ impl Inbox {
     pub fn wake(&self) {
         self.lock().bump();
     }
+
+    /// Record that a user steering message arrived for `session` and wake any waiter (such as
+    /// `wait({})`).
+    pub fn notify_steer(&self, session: &str) {
+        let mut state = self.lock();
+        *state.steer_versions.entry(session.to_owned()).or_default() += 1;
+        state.bump();
+    }
+
+    /// Monotonic counter of steering notifications recorded for `session`.
+    pub fn steer_version(&self, session: &str) -> u64 {
+        self.lock()
+            .steer_versions
+            .get(session)
+            .copied()
+            .unwrap_or(0)
+    }
 }
 
 /// The system-authored follow-up message that carries `items` to the model.
@@ -259,5 +277,19 @@ mod tests {
         let text = format_inbox(&[item("a"), item("b")]);
         assert!(text.starts_with("[system]"));
         assert!(text.contains("text a") && text.contains("text b"));
+    }
+
+    #[test]
+    fn notify_steer_bumps_session_version_and_wakes_waiters() {
+        let inbox = Arc::new(Inbox::default());
+        let mut cx = Context::from_waker(Waker::noop());
+        assert_eq!(inbox.steer_version("s1"), 0);
+        let seen = inbox.version();
+        let mut fut = std::pin::pin!(inbox.changed(seen));
+        assert!(fut.as_mut().poll(&mut cx).is_pending());
+        inbox.notify_steer("s1");
+        assert_eq!(inbox.steer_version("s1"), 1);
+        assert_eq!(inbox.steer_version("s2"), 0);
+        assert!(fut.as_mut().poll(&mut cx).is_ready());
     }
 }

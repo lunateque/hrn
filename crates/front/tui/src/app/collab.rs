@@ -94,6 +94,17 @@ impl App {
                 }
             }
             Task::Idle => {
+                if self.backend.is_main_running() {
+                    self.start_task(Task::Turn {
+                        awaiting_start: false,
+                    });
+                    self.backend.steer(prompt);
+                    self.transcript.push(Entry::Steer {
+                        text: shown,
+                        state: SteerState::Queued,
+                    });
+                    return;
+                }
                 self.last_prompt = Some(prompt.to_owned());
                 let labeled_images = if allow_local_images {
                     self.images.take_for_prompt(prompt, &self.cwd)

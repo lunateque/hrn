@@ -87,7 +87,8 @@ impl App {
             Action::TreeNextBranch => self.switch_sibling_branch(true),
             Action::TreePreviousBranch => self.switch_sibling_branch(false),
             // Scoped/editor actions are handled in their dedicated overlays or editor_key.
-            Action::MessageFollowUp
+            Action::EditorNewline
+            | Action::MessageFollowUp
             | Action::MessageDequeue
             | Action::ClipboardPasteImage
             | Action::ClipboardPasteTextRaw

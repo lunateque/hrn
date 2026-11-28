@@ -3,7 +3,9 @@
 
 use super::ChatBackend;
 use super::chat_ui::UiEvents;
-use hrn_kernel::{BtwTopic, CancelFlag, DagNode, EventSink, HrnError, Result, SessionMeta};
+use hrn_kernel::{
+    BtwExchange, BtwStatus, BtwTopic, CancelFlag, DagNode, EventSink, HrnError, Result, SessionMeta,
+};
 use hrn_tui::{TaskEnd, UiEvent};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -118,7 +120,7 @@ impl ChatBackend {
                 "a /btw question is already running".to_owned(),
             ));
         }
-        let session_id = match self.session.clone() {
+        let session_id = match self.active_session_id() {
             Some(id) => id,
             None => match self.session_for(question) {
                 Ok(id) => id,
@@ -160,7 +162,18 @@ impl ChatBackend {
                     let _ = tx.send(UiEvent::BtwDone(topic));
                 }
                 Err(err) => {
-                    let _ = tx.send(UiEvent::Report(format!("/btw failed: {err}")));
+                    let topic = BtwTopic {
+                        id: tid,
+                        title: q.chars().take(60).collect(),
+                        exchanges: vec![BtwExchange {
+                            question: q,
+                            answer: String::new(),
+                            status: BtwStatus::Error(err.to_string()),
+                            injected: false,
+                        }],
+                        updated_at_ms: 0,
+                    };
+                    let _ = tx.send(UiEvent::BtwDone(topic));
                 }
             }
         });
@@ -176,17 +189,17 @@ impl ChatBackend {
 
     /// Load persisted `/btw` topics for the active session.
     pub(super) fn list_btw_live(&self) -> Result<Vec<BtwTopic>> {
-        let Some(id) = self.session.as_deref() else {
+        let Some(id) = self.active_session_id() else {
             return Ok(Vec::new());
         };
-        self.runtime.list_btw_topics(id)
+        self.runtime.list_btw_topics(&id)
     }
 
     /// Save an updated `/btw` topic (e.g. after marking `<inject>` as sent).
     pub(super) fn save_btw_live(&self, topic: &BtwTopic) -> Result {
-        let Some(id) = self.session.as_deref() else {
+        let Some(id) = self.active_session_id() else {
             return Ok(());
         };
-        self.runtime.save_btw_topic(id, topic)
+        self.runtime.save_btw_topic(&id, topic)
     }
 }

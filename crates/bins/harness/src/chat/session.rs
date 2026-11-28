@@ -14,6 +14,8 @@ impl ChatBackend {
     pub(super) fn set_session(&mut self, id: Option<String>) {
         self.clear_focus_sink();
         self.focused_agent = None;
+        self.focused_on_child
+            .store(false, std::sync::atomic::Ordering::Relaxed);
         self.saved_main_settings = None;
         let changed = self.session != id;
         self.control = SessionControl::default();
@@ -123,6 +125,7 @@ impl ChatBackend {
             collab_host,
             Some(std::sync::Arc::clone(&remote_hub)),
             std::sync::Arc::clone(&self.store),
+            std::sync::Arc::clone(&self.focused_on_child),
         );
         let tx = self.tx.clone();
         let idle = self.idle.clone();

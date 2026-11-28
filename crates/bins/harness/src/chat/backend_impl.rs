@@ -71,6 +71,10 @@ impl Backend for ChatBackend {
         if self.submit_collab_guest(prompt)? {
             return Ok(());
         }
+        if self.control.is_running() {
+            self.steer(prompt);
+            return Ok(());
+        }
         self.apply_pending_reload();
         self.ensure_writable()?;
         let session_id = self.session_for(prompt)?;
@@ -79,11 +83,17 @@ impl Backend for ChatBackend {
         self.start_turn(session_id, prompt, images);
         Ok(())
     }
+    fn is_main_running(&self) -> bool {
+        self.control.is_running()
+    }
     fn start_inbox_turn(&mut self) -> Result<Option<String>> {
         self.inbox_turn()
     }
     fn steer(&mut self, text: &str) {
         self.control.push_steer(text.to_owned());
+        if let Some(sid) = self.session.as_deref() {
+            self.runtime.agents().inbox().notify_steer(sid);
+        }
     }
     fn interrupt(&mut self) {
         if self.interrupt_collab_guest() {
@@ -121,6 +131,9 @@ impl Backend for ChatBackend {
     }
     fn session_usage(&self) -> Result<Usage> {
         self.rollup_usage()
+    }
+    fn last_prompt_tokens(&self) -> u64 {
+        self.last_prompt_tokens_live()
     }
     fn fetch_usage(&mut self) -> Result {
         self.run_usage_task()

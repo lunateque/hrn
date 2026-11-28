@@ -123,17 +123,27 @@ pub(crate) async fn stream(
     let headers = build_headers(provider, preset, token, req.session_id.as_deref());
     let timeout = effective_stream_timeout(provider, preset);
     let body = Bytes::from(serde_json::to_vec(&payload)?);
-    let mut sse = match http.post_stream(&url, &headers, body, timeout).await? {
-        StreamReply::Stream(stream) => stream,
-        StreamReply::Failed(reply)
-            if reply.status == 400
-                && adjust_rejected_reasoning_effort(&mut payload, req.thinking, &reply.text()) =>
+    let mut sse =
+        match crate::common::post_stream_cancellable(http, &url, &headers, body, timeout, cancel)
+            .await?
         {
-            let retry_body = Bytes::from(serde_json::to_vec(&payload)?);
-            http.post_sse(&url, &headers, retry_body, timeout).await?
-        }
-        StreamReply::Failed(reply) => return Err(reply.status_error()),
-    };
+            StreamReply::Stream(stream) => stream,
+            StreamReply::Failed(reply)
+                if reply.status == 400
+                    && adjust_rejected_reasoning_effort(
+                        &mut payload,
+                        req.thinking,
+                        &reply.text(),
+                    ) =>
+            {
+                let retry_body = Bytes::from(serde_json::to_vec(&payload)?);
+                crate::common::post_sse_cancellable(
+                    http, &url, &headers, retry_body, timeout, cancel,
+                )
+                .await?
+            }
+            StreamReply::Failed(reply) => return Err(reply.status_error()),
+        };
     read_stream(&mut sse, model_id, cancel, sink).await
 }
 

@@ -6,7 +6,7 @@ use crate::imgview;
 use crate::markdown;
 use crate::symbols;
 use crate::theme;
-use crate::tool;
+use crate::tool_group;
 use crate::transcript::{Entry, Level, SteerState};
 use crate::wrap;
 use hrn_kernel::ImageAttachment;
@@ -92,7 +92,7 @@ pub(crate) fn entry(entry: &Entry, expanded: bool, ctx: &Ctx) -> Vec<Line<'stati
             elapsed,
             live,
         } => reasoning(text, started.filter(|_| *live), *elapsed, expanded, ctx),
-        Entry::Tool(card) => tool::render(card, expanded, ctx),
+        Entry::ToolGroup(group) => tool_group::render(group, expanded, ctx),
         Entry::Compacted {
             method,
             summary,

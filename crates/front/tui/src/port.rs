@@ -63,37 +63,36 @@ pub trait Backend: Send {
 
     /// Queue text for the running turn's next step boundary.
     fn steer(&mut self, text: &str);
-
     /// Cancel the running turn or compaction; history stays valid.
     fn interrupt(&mut self);
-
+    /// Whether the main root session currently has a turn in flight.
+    fn is_main_running(&self) -> bool {
+        false
+    }
+    /// Prompt tokens of the active session's most recent LLM call, for status-bar context `%`.
+    fn last_prompt_tokens(&self) -> u64 {
+        0
+    }
     /// Fold older history into a summary in the background (`Ok(false)`: no session yet).
     fn compact(&mut self, instructions: Option<&str>) -> Result<bool>;
-
     /// Aggressively elide large old tool outputs to `local://` without an LLM call (`/shake`).
     fn shake(&mut self) -> Result<bool> {
         Ok(false)
     }
-
     /// Whether `[compaction] auto_continue` is enabled.
     fn compaction_auto_continue(&self) -> bool {
         true
     }
-
     /// Summary text of the newest persisted compaction node on the current branch (`Ctrl+O`).
     fn latest_compaction_summary(&self) -> Option<String> {
         None
     }
-
     /// Forget the current session; the next prompt starts a new one.
     fn new_session(&mut self);
-
     /// Stored sessions, most recently updated first.
     fn sessions(&self) -> Result<Vec<SessionMeta>>;
-
     /// Make a stored session current; returns it with its active branch, oldest node first.
     fn resume(&mut self, session_id: &str) -> Result<(SessionMeta, Vec<DagNode>)>;
-
     /// Context window size (in tokens) for `model`, or `0` if unknown.
     fn context_window(&self, _model: &str) -> u64 {
         0

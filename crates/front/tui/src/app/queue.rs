@@ -92,13 +92,50 @@ impl App {
         self.notice(Level::Info, out);
     }
 
-    /// Queue the current editor draft as a follow-up (`Ctrl+Enter` while busy).
+    /// Queue the current editor draft as a follow-up (`Ctrl+Q` while busy).
     pub(super) fn queue_follow_up(&mut self) {
         let text = self.editor.take();
         if text.trim().is_empty() {
             return;
         }
         self.enqueue_prompt(&text);
+    }
+
+    /// Promote the oldest queued follow-up into an immediate mid-turn steer (plain `Enter` on an
+    /// empty editor while a turn is running).
+    pub(super) fn promote_followup_to_steer(&mut self) -> bool {
+        let Some(next) = self.followups.pop_front() else {
+            return false;
+        };
+        self.transcript.drop_follow_up(&next);
+        if let Some(agent_id) = self.focused_agent.clone() {
+            match self.backend.steer_or_prompt_agent(&agent_id, &next) {
+                Ok(true) => {
+                    self.transcript.push(crate::transcript::Entry::Steer {
+                        text: next,
+                        state: crate::transcript::SteerState::Queued,
+                    });
+                    self.flash(format!("steering `{agent_id}` immediately…"));
+                }
+                Ok(false) => {
+                    self.transcript.push(crate::transcript::Entry::User(next));
+                    self.flash(format!("sent follow-up to `{agent_id}`"));
+                }
+                Err(err) => {
+                    self.followups.push_front(next);
+                    self.notice(Level::Error, err.to_string());
+                    return false;
+                }
+            }
+        } else {
+            self.backend.steer(&next);
+            self.transcript.push(crate::transcript::Entry::Steer {
+                text: next,
+                state: crate::transcript::SteerState::Queued,
+            });
+            self.flash("steering immediately…");
+        }
+        true
     }
 
     /// `Alt+Up`: pop the newest queued follow-up back into the editor so the user can edit or cancel it.

@@ -50,8 +50,12 @@ impl Tool for WaitTool {
         let owner = ctx.session_id.clone();
         let cancel = ctx.cancel.clone();
         Box::pin(async move {
+            let initial_steer = inbox.steer_version(&owner);
             loop {
                 let seen = inbox.version();
+                if inbox.steer_version(&owner) != initial_steer {
+                    return Ok(ToolOutput::ok("Wait interrupted by user steering message."));
+                }
                 let mine = procs.owned(&owner);
                 let mut settled: Vec<_> =
                     mine.iter().filter(|e| e.waitable && !e.running).collect();

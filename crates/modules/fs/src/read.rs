@@ -72,7 +72,7 @@ impl Tool for ReadTool {
         Box::pin(async move {
             let raw = required_str(&args, "path", "read")?.to_owned();
             if is_web_url(&raw) {
-                return read_url(&fetcher, &ctx.cwd, &raw).await;
+                return ctx.cancel.race(read_url(&fetcher, &ctx.cwd, &raw)).await;
             }
             blocking("read", move || {
                 read_sync_with_anchors(&tracker, &ctx, &raw, hashline_anchors)

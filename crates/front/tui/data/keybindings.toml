@@ -9,6 +9,11 @@ chords = ["Ctrl+R"]
 help = "search prompt history"
 
 [[action]]
+id = "app.editor.newline"
+chords = ["Shift+Enter", "Ctrl+Enter", "Alt+Enter", "Ctrl+J"]
+help = "insert a newline in the editor"
+
+[[action]]
 id = "app.editor.external"
 chords = ["Ctrl+G"]
 help = "edit the draft in $VISUAL / $EDITOR (notepad on Windows)"
@@ -20,7 +25,7 @@ help = "open a session local:// artifact in $VISUAL / $EDITOR"
 
 [[action]]
 id = "app.message.followUp"
-chords = ["Ctrl+Enter", "Ctrl+Q"]
+chords = ["Ctrl+Q"]
 help = "queue a follow-up message for after the turn"
 
 [[action]]

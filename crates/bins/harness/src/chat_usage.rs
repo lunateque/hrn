@@ -11,9 +11,20 @@ impl ChatBackend {
     }
 
     pub(super) fn rollup_usage(&self) -> Result<Usage> {
-        self.session
+        self.active_session_id()
             .as_deref()
             .map_or_else(|| Ok(Usage::default()), |id| self.store.session_usage(id))
+    }
+
+    pub(super) fn last_prompt_tokens_live(&self) -> u64 {
+        let Some(id) = self.active_session_id() else {
+            return 0;
+        };
+        self.store
+            .latest_prompt_tokens(&id)
+            .ok()
+            .flatten()
+            .unwrap_or(0)
     }
 
     pub(super) fn run_usage_task(&mut self) -> Result {

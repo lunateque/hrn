@@ -174,10 +174,9 @@ impl App {
             Ok((meta, nodes)) => {
                 if self.focused_agent.is_none() {
                     self.saved_main_settings = Some(self.settings.clone());
+                    self.saved_main_prompt_tokens = self.last_prompt_tokens;
                 }
                 self.focused_agent = Some(agent_id.to_owned());
-                self.show_session(&meta, &nodes);
-                self.title = Some(format!("agent:{agent_id}"));
                 self.refresh_hub_snapshot();
                 let running = self
                     .background
@@ -186,6 +185,8 @@ impl App {
                     .iter()
                     .find(|e| e.id == agent_id)
                     .is_some_and(|e| e.status == AgentHubStatus::Running);
+                self.show_session_with_running(&meta, &nodes, running);
+                self.title = Some(format!("agent:{agent_id}"));
                 if running {
                     self.start_task(Task::Turn {
                         awaiting_start: false,
@@ -194,7 +195,9 @@ impl App {
                     self.task = Task::Idle;
                     self.busy_since = None;
                 }
-                self.flash(format!("focused agent `{agent_id}` · esc or ←← for main"));
+                self.flash(format!(
+                    "focused agent `{agent_id}` · esc for agent hub · shift+esc to interrupt"
+                ));
             }
             Err(err) => self.notice(Level::Error, err.to_string()),
         }
@@ -208,14 +211,28 @@ impl App {
         match self.backend.unfocus_agent() {
             Ok(loaded) => {
                 self.focused_agent = None;
-                self.task = Task::Idle;
-                self.busy_since = None;
+                let main_running = self.backend.is_main_running();
                 if let Some((meta, nodes)) = loaded {
-                    self.show_session(&meta, &nodes);
+                    self.show_session_with_running(&meta, &nodes, main_running);
+                    if self.last_prompt_tokens == 0 && self.saved_main_prompt_tokens > 0 {
+                        self.last_prompt_tokens = self.saved_main_prompt_tokens;
+                    }
                 } else if let Some(saved) = self.saved_main_settings.take() {
                     self.settings = saved;
                     self.context_window = self.backend.context_window(&self.settings.model);
                     self.title = None;
+                    if self.last_prompt_tokens == 0 && self.saved_main_prompt_tokens > 0 {
+                        self.last_prompt_tokens = self.saved_main_prompt_tokens;
+                    }
+                }
+                self.saved_main_prompt_tokens = 0;
+                if main_running {
+                    self.start_task(Task::Turn {
+                        awaiting_start: false,
+                    });
+                } else {
+                    self.task = Task::Idle;
+                    self.busy_since = None;
                 }
                 self.saved_main_settings = None;
                 self.flash("returned to main session");

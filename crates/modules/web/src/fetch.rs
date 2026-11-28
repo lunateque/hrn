@@ -48,12 +48,13 @@ impl Tool for WebFetchTool {
         summary_of(args, "url")
     }
 
-    fn execute(&self, _ctx: &ToolContext, args: Value) -> BoxFuture<Result<ToolOutput>> {
+    fn execute(&self, ctx: &ToolContext, args: Value) -> BoxFuture<Result<ToolOutput>> {
         let fetcher = Arc::clone(&self.fetcher);
+        let cancel = ctx.cancel.clone();
         Box::pin(async move {
             let url = required_str(&args, "url", "web_fetch")?.to_owned();
             let max_chars = bounded_usize(&args, "max_chars", DEFAULT_CHARS, 500, MAX_CHARS);
-            let text = fetcher.fetch(&url, false).await?;
+            let text = cancel.race(fetcher.fetch(&url, false)).await?;
             Ok(ToolOutput::ok(clip(&text, max_chars)))
         })
     }

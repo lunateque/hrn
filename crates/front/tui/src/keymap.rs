@@ -18,6 +18,7 @@ const DEFAULTS: &str = include_str!("../data/keybindings.toml");
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Action {
     HistorySearch,
+    EditorNewline,
     EditorExternal,
     LocalOpen,
     MessageFollowUp,
@@ -54,6 +55,7 @@ impl Action {
     /// Every declared action in canonical order.
     pub(crate) const ALL: &'static [Self] = &[
         Self::HistorySearch,
+        Self::EditorNewline,
         Self::EditorExternal,
         Self::LocalOpen,
         Self::MessageFollowUp,
@@ -116,6 +118,7 @@ impl Action {
     pub(crate) const fn id(self) -> &'static str {
         match self {
             Self::HistorySearch => "app.history.search",
+            Self::EditorNewline => "app.editor.newline",
             Self::EditorExternal => "app.editor.external",
             Self::LocalOpen => "app.local.open",
             Self::MessageFollowUp => "app.message.followUp",

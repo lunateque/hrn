@@ -205,6 +205,7 @@ impl ChatBackend {
                 cancel,
                 Some(Arc::clone(&remote_hub)),
                 Arc::clone(&self.store),
+                Arc::clone(&self.focused_on_child),
             );
             let tx = self.tx.clone();
             self.handle.spawn(async move {

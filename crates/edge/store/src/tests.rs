@@ -234,6 +234,18 @@ fn usage_is_recorded_summed_per_session_and_reported_by_day_and_model() {
     );
     assert_eq!(s1.cache_read_tokens, Some(2));
     assert_eq!(
+        store.latest_prompt_tokens("s1").expect("latest s1"),
+        Some(200)
+    );
+    assert_eq!(
+        store.latest_prompt_tokens("sub").expect("latest sub"),
+        Some(50)
+    );
+    assert_eq!(
+        store.latest_prompt_tokens("nobody").expect("latest nobody"),
+        None
+    );
+    assert_eq!(
         store.session_usage("nobody").expect("empty"),
         Usage::default()
     );

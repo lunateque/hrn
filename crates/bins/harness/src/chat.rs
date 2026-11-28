@@ -19,7 +19,6 @@ use hrn_tui::{Settings, UiSender};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::runtime::Handle;
 
 mod agents;
@@ -46,8 +45,6 @@ mod worktree_cmd;
 
 pub(crate) use reload::run;
 
-/// How often a pending approval re-checks the turn's cancellation.
-const CANCEL_POLL: Duration = Duration::from_millis(100);
 /// Sessions offered by `/sessions`.
 const SESSION_LIST: usize = 200;
 
@@ -97,6 +94,8 @@ pub(crate) struct ChatBackend {
     pub(super) idle: crate::idle_compact::ChatIdleHandle,
     /// Currently focused child agent id (when swapped into a subagent view from Agent Hub).
     pub(super) focused_agent: Option<String>,
+    /// Shared flag true while focused on a child agent, isolating main's `UiEvents` from its view.
+    pub(super) focused_on_child: Arc<std::sync::atomic::AtomicBool>,
     /// Main session settings stashed while focused on a child agent.
     pub(super) saved_main_settings: Option<Settings>,
     /// True when `--no-title` or `--no-session` forces auto-titling off across config reloads.

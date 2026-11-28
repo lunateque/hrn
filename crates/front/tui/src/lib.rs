@@ -69,6 +69,7 @@ mod table;
 mod term;
 mod theme;
 mod tool;
+mod tool_group;
 mod toolfmt;
 mod trace_view;
 mod transcript;

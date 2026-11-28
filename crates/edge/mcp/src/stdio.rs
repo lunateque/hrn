@@ -20,8 +20,6 @@ use tokio::sync::Mutex;
 const STDERR_CAP: usize = 4096;
 /// Maximum bytes accumulated for a single JSON-RPC response line (4 MiB) to prevent OOM.
 const MAX_JSONRPC_LINE_BYTES: usize = 4 * 1024 * 1024;
-/// Poll interval for checking cooperative cancellation while awaiting a response.
-const CANCEL_POLL: Duration = Duration::from_millis(50);
 
 struct StdioSpec {
     server_name: String,
@@ -216,26 +214,16 @@ impl StdioMcpTransport {
         let deadline = tokio::time::Instant::now() + self.spec.timeout;
         let expected_id = &req.id;
         let mut buf = Vec::new();
-        let mut ticker = tokio::time::interval(CANCEL_POLL);
-        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
             buf.clear();
-            let poll_res = {
-                let read_fut =
-                    read_bounded_line(&mut child.stdout, &mut buf, MAX_JSONRPC_LINE_BYTES);
-                tokio::pin!(read_fut);
-                loop {
-                    tokio::select! {
-                        res = &mut read_fut => break PollResult::Read(res),
-                        () = tokio::time::sleep_until(deadline) => break PollResult::TimedOut,
-                        _ = ticker.tick() => {
-                            if cancel.is_cancelled() {
-                                break PollResult::Cancelled;
-                            }
-                        }
-                    }
+            let poll_res = tokio::select! {
+                biased;
+                () = cancel.cancelled() => PollResult::Cancelled,
+                res = read_bounded_line(&mut child.stdout, &mut buf, MAX_JSONRPC_LINE_BYTES) => {
+                    PollResult::Read(res)
                 }
+                () = tokio::time::sleep_until(deadline) => PollResult::TimedOut,
             };
             let read_res = match poll_res {
                 PollResult::Read(res) => res,

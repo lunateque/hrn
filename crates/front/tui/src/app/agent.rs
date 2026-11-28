@@ -29,6 +29,9 @@ impl App {
     }
 
     fn apply_session_title(&mut self, session_id: &str, title: &str) {
+        if self.focused_agent.is_some() {
+            return;
+        }
         if self.backend.current_session_id().as_deref() == Some(session_id) {
             let trimmed = title.trim();
             self.title = (!trimmed.is_empty()).then(|| trimmed.to_owned());
@@ -276,6 +279,19 @@ impl App {
     }
 
     fn on_finished(&mut self, end: TaskEnd) {
+        if self.focused_agent.is_some()
+            && let TaskEnd::Turn { outcome, .. } = &end
+        {
+            match outcome {
+                TurnOutcome::Done => self.flash("main session turn finished"),
+                TurnOutcome::Interrupted => self.flash("main session interrupted"),
+                TurnOutcome::Failed(message) => {
+                    self.flash(format!("main session error: {message}"));
+                }
+            }
+            self.refresh_hub_snapshot();
+            return;
+        }
         let now = Instant::now();
         self.transcript.turn_finished(now);
         self.approvals.clear();
@@ -373,9 +389,20 @@ impl App {
 
     /// Replace the transcript with a stored session and adopt its settings and directory.
     pub(super) fn show_session(&mut self, meta: &SessionMeta, nodes: &[DagNode]) {
+        self.show_session_with_running(meta, nodes, false);
+    }
+
+    /// Replace the transcript with a stored session, keeping trailing tool calls live when
+    /// `running` is `true` (e.g. swapping back to a still-running main or child session).
+    pub(super) fn show_session_with_running(
+        &mut self,
+        meta: &SessionMeta,
+        nodes: &[DagNode],
+        running: bool,
+    ) {
         self.cwd = PathBuf::from(&meta.cwd);
         self.transcript
-            .load_with_tray(nodes, &mut self.images, &self.cwd);
+            .load_with_tray_running(nodes, &mut self.images, &self.cwd, running);
         self.image_modal = None;
         self.restart_screen(false);
         self.title = Some(meta.title.clone()).filter(|t| !t.trim().is_empty());
@@ -388,7 +415,7 @@ impl App {
         self.tokens = (used.prompt_tokens, used.completion_tokens);
         self.cost = used.cost_micros;
         self.reasoning_tokens = used.reasoning_tokens.unwrap_or(0);
-        self.last_prompt_tokens = 0;
+        self.last_prompt_tokens = self.backend.last_prompt_tokens();
         self.speculating_compact = false;
         self.settings.thinking = meta.thinking;
         self.settings.mode = meta.permission_mode;

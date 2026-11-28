@@ -375,6 +375,10 @@ impl SessionStore for SqliteStore {
         self.sum_session_usage(session_id)
     }
 
+    fn latest_prompt_tokens(&self, session_id: &str) -> Result<Option<u64>> {
+        self.last_prompt_tokens(session_id)
+    }
+
     fn usage_report(&self) -> Result<Vec<UsageRow>> {
         self.report_usage(None)
     }
