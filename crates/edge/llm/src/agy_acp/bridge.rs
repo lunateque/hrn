@@ -59,11 +59,14 @@ impl Default for McpBridgeOptions {
     }
 }
 
+/// Process-wide `tools/call` sequence: bridged call ids (`hrn_call_<n>`) stay unique across every
+/// runtime lane, so concurrent sessions never see the same id.
+pub(crate) static NEXT_CALL_SEQ: AtomicU64 = AtomicU64::new(1);
+
 pub(crate) struct BridgeState {
     pub(crate) token: String,
     pub(crate) tools: RwLock<Vec<ToolSpec>>,
     pub(crate) wire_to_real: RwLock<HashMap<String, String>>,
-    pub(crate) next_call_seq: AtomicU64,
     pub(crate) pending_calls: Mutex<HashMap<String, oneshot::Sender<BridgeToolResult>>>,
     pub(crate) call_sink: Mutex<Option<mpsc::UnboundedSender<ToolCall>>>,
     pub(crate) options: McpBridgeOptions,
@@ -105,7 +108,6 @@ impl McpBridge {
             token,
             tools: RwLock::new(Vec::new()),
             wire_to_real: RwLock::new(HashMap::new()),
-            next_call_seq: AtomicU64::new(1),
             pending_calls: Mutex::new(HashMap::new()),
             call_sink: Mutex::new(None),
             options,

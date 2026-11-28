@@ -182,7 +182,7 @@ async fn live_stream_chat_and_loopback_mcp_bridge_tool() -> TestResult {
     let final_resp = runtime
         .stream_chat(&model_id, &req3, &cancel, &sink, None)
         .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::ResumeToolCall));
+    assert_eq!(runtime.last_route(), Some(RouteKind::ResumeToolCall));
     assert_eq!(final_resp.finish_reason, FinishReason::Stop);
     assert!(
         final_resp.content.contains("HRN-BRIDGE-OK-7742"),

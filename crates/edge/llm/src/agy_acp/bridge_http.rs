@@ -1,7 +1,8 @@
 //! HTTP/JSON-RPC/SSE request handlers backing [`super::bridge::McpBridge`].
 
 use super::bridge::{
-    BRIDGE_TOKEN_HEADER, BRIDGE_TOOL_PREFIX, BridgeState, BridgeToolResult, constant_time_eq,
+    BRIDGE_TOKEN_HEADER, BRIDGE_TOOL_PREFIX, BridgeState, BridgeToolResult, NEXT_CALL_SEQ,
+    constant_time_eq,
 };
 use super::schema::{sanitize_tool_schema, wire_tool_name};
 use bytes::Bytes;
@@ -162,7 +163,7 @@ async fn handle_tool_call(id: Value, params: &Value, state: Arc<BridgeState>) ->
         .and_then(|m| m.get("progressToken"))
         .cloned();
 
-    let seq = state.next_call_seq.fetch_add(1, Ordering::Relaxed);
+    let seq = NEXT_CALL_SEQ.fetch_add(1, Ordering::Relaxed);
     let call_id = format!("hrn_call_{seq}");
     let (tx, rx) = oneshot::channel();
     state

@@ -1,5 +1,6 @@
-//! Stateful `AgyAcpRuntime` bridging stateless `LlmProvider::stream_chat` onto a warm `agy acp`
-//! child process, loopback Streamable HTTP MCP bridge, ephemeral custom agent, and DAG session map.
+//! Stateful `AgyAcpRuntime` bridging stateless `LlmProvider::stream_chat` onto warm `agy acp`
+//! child processes, loopback Streamable HTTP MCP bridges, ephemeral custom agents, and DAG
+//! session maps. Sessions whose turns overlap run on separate lanes (see `lanes.rs`).
 
 use super::agent_profile::{EphemeralAgentProfile, cleanup_stale_agent_dirs};
 use super::binary::{discover_agy_binary, merged_no_proxy_env};
@@ -10,22 +11,22 @@ use super::handoff::{
     BootstrapStrategy, HandoffSummarizer, prepare_bootstrap_prompt, render_user_delta,
     split_history_and_new_turn,
 };
+use super::lanes::{LanePool, LaneState, Release};
 use super::runtime_turn::{
     ActiveTurn, CONTROL_RPC_TIMEOUT, SESSION_INIT_RPC_TIMEOUT, TurnStep, abort_turn,
     build_prompt_blocks, drive_turn, match_trailing_tool_results, race_cancel, should_reset_client,
     sync_model_and_effort,
 };
-use super::session_map::{AgySessionEntry, RouteDecision, SessionMap, hash_messages_prefix};
+use super::session_map::{AgySessionEntry, RouteDecision, hash_messages_prefix};
 use super::wire::{detect_quota_exhaustion, now_epoch_secs};
 use hrn_kernel::{
     CancelFlag, ChunkSink, FinishReason, HrnError, LlmRequest, LlmResponse, Msg, Result, ToolSpec,
 };
 use serde_json::Value;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
-use tokio::sync::{Mutex as AsyncMutex, mpsc};
+use tokio::sync::mpsc;
 
 /// Default batching window for collecting parallel `tools/call` requests before returning to `hrn`.
 pub const DEFAULT_TOOL_BATCH_WINDOW: Duration = Duration::from_millis(30);
@@ -62,14 +63,8 @@ pub struct RuntimeOptions {
     pub spawn_override: Option<AcpSpawnSpec>,
 }
 
-struct RuntimeInner {
-    client: Option<Arc<AcpClient>>,
-    bridge: Option<Arc<McpBridge>>,
-    agent_profile: Option<EphemeralAgentProfile>,
-    session_map: SessionMap,
-    active_turns: HashMap<String, ActiveTurn>,
-    last_route: Option<RouteKind>,
-}
+/// Lanes are reclaimed from a silent owner only after this much past the ACP turn timeout.
+const STALE_LANE_GRACE: Duration = Duration::from_mins(1);
 
 /// Long-lived Antigravity ACP runtime (attach as `Arc<AgyAcpRuntime>` to `LlmRouter` so it
 /// survives `LlmRouter::with_config` reloads without killing warm sessions).
@@ -80,7 +75,8 @@ pub struct AgyAcpRuntime {
     bridge_options: McpBridgeOptions,
     tool_batch_window: Duration,
     spawn_override: Option<AcpSpawnSpec>,
-    inner: AsyncMutex<RuntimeInner>,
+    lanes: LanePool,
+    last_route: Mutex<Option<RouteKind>>,
 }
 
 impl AgyAcpRuntime {
@@ -96,25 +92,34 @@ impl AgyAcpRuntime {
                 .tool_batch_window
                 .unwrap_or(DEFAULT_TOOL_BATCH_WINDOW),
             spawn_override: options.spawn_override,
-            inner: AsyncMutex::new(RuntimeInner {
-                client: None,
-                bridge: None,
-                agent_profile: None,
-                session_map: SessionMap::default(),
-                active_turns: HashMap::new(),
-                last_route: None,
-            }),
+            lanes: LanePool::default(),
+            last_route: Mutex::new(None),
         }
     }
 
     /// Return the routing path chosen on the most recent `stream_chat` call.
-    pub async fn last_route(&self) -> Option<RouteKind> {
-        self.inner.lock().await.last_route
+    pub fn last_route(&self) -> Option<RouteKind> {
+        *self
+            .last_route
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Return the loopback MCP bridge URL if started (mainly for diagnostics and tests).
+    fn set_last_route(&self, route: RouteKind) {
+        *self
+            .last_route
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(route);
+    }
+
+    /// Return a loopback MCP bridge URL if any lane started one (diagnostics and tests).
     pub async fn bridge_url(&self) -> Option<String> {
-        self.inner.lock().await.bridge.as_ref().map(|b| b.url())
+        for lane in self.lanes.lanes() {
+            if let Some(url) = lane.state.lock().await.bridge.as_ref().map(|b| b.url()) {
+                return Some(url);
+            }
+        }
+        None
     }
 
     /// Execute one stateless [`LlmRequest`] against `agy acp`, streaming chunks to `sink`.
@@ -134,8 +139,55 @@ impl AgyAcpRuntime {
             .clone()
             .unwrap_or_else(|| "default".to_owned());
 
-        let mut guard = self.inner.lock().await;
-        race_cancel(cancel, self.ensure_ready(&mut guard, &req.tools)).await?;
+        // Reserve a lane for this session's turn: overlapping sessions never share an `agy`
+        // child or bridge, so tool calls cannot cross between them.
+        let mut lease = self.lanes.checkout(
+            &hrn_sid,
+            self.config.turn_timeout().saturating_add(STALE_LANE_GRACE),
+        );
+        let lane = lease.lane();
+        let mut guard = tokio::select! {
+            biased;
+            () = cancel.cancelled() => return Err(HrnError::Cancelled),
+            guard = lane.state.lock() => guard,
+        };
+        lease.engage();
+        let res = self
+            .stream_on_lane(
+                &mut guard, &hrn_sid, model_id, req, cancel, sink, summarizer,
+            )
+            .await;
+        let release = if guard
+            .active_turn
+            .as_ref()
+            .is_some_and(|(owner, _)| *owner == hrn_sid)
+        {
+            Release::Suspended
+        } else {
+            Release::Finished {
+                warm: guard.session_map.contains(&hrn_sid),
+            }
+        };
+        drop(guard);
+        lease.finish(release);
+        res
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "one turn leg needs the lane, session id, model, request, cancel, sink, summarizer"
+    )]
+    async fn stream_on_lane(
+        &self,
+        guard: &mut LaneState,
+        hrn_sid: &str,
+        model_id: &str,
+        req: &LlmRequest,
+        cancel: &CancelFlag,
+        sink: &dyn ChunkSink,
+        summarizer: Option<&dyn HandoffSummarizer>,
+    ) -> Result<LlmResponse> {
+        race_cancel(cancel, self.ensure_ready(guard, &req.tools)).await?;
 
         let client =
             guard.client.as_ref().map(Arc::clone).ok_or_else(|| {
@@ -148,10 +200,10 @@ impl AgyAcpRuntime {
 
         let mut turn = match self
             .acquire_active_turn(
-                &mut guard,
+                guard,
                 &client,
                 bridge.as_deref(),
-                &hrn_sid,
+                hrn_sid,
                 model_id,
                 req,
                 cancel,
@@ -180,10 +232,10 @@ impl AgyAcpRuntime {
         .await;
 
         finalize_turn_step(
-            &mut guard,
+            guard,
             &client,
             bridge.as_deref(),
-            hrn_sid,
+            hrn_sid.to_owned(),
             model_id,
             req,
             turn,
@@ -198,7 +250,7 @@ impl AgyAcpRuntime {
     )]
     async fn acquire_active_turn(
         &self,
-        guard: &mut RuntimeInner,
+        guard: &mut LaneState,
         client: &AcpClient,
         bridge: Option<&McpBridge>,
         hrn_sid: &str,
@@ -207,15 +259,19 @@ impl AgyAcpRuntime {
         cancel: &CancelFlag,
         summarizer: Option<&dyn HandoffSummarizer>,
     ) -> Result<ActiveTurn> {
-        if let Some(turn) = guard.active_turns.remove(hrn_sid) {
-            if let Some(resolved) =
-                match_trailing_tool_results(&req.messages, &turn.expected_call_ids)
+        // One lane runs one turn at a time: a suspended turn is resumed only by its own session
+        // with the results it asked for; anything else (a stale owner's turn, a turn whose
+        // results do not line up) is aborted so its `agy` prompt cannot keep calling tools.
+        if let Some((owner, turn)) = guard.active_turn.take() {
+            if owner == hrn_sid
+                && let Some(resolved) =
+                    match_trailing_tool_results(&req.messages, &turn.expected_call_ids)
                 && let Some(b) = bridge
             {
                 for (call_id, result) in resolved {
                     let _ = b.resolve_call(&call_id, result);
                 }
-                guard.last_route = Some(RouteKind::ResumeToolCall);
+                self.set_last_route(RouteKind::ResumeToolCall);
                 return Ok(turn);
             }
             abort_turn(client, bridge, &turn.agy_session_id).await;
@@ -226,7 +282,7 @@ impl AgyAcpRuntime {
                 guard, client, bridge, hrn_sid, model_id, req, cancel, summarizer,
             )
             .await?;
-        guard.last_route = Some(route_kind);
+        self.set_last_route(route_kind);
 
         let update_rx = client.subscribe_updates(&agy_sid);
         let tool_rx = match bridge {
@@ -249,7 +305,7 @@ impl AgyAcpRuntime {
         })
     }
 
-    async fn ensure_ready(&self, inner: &mut RuntimeInner, initial_tools: &[ToolSpec]) -> Result {
+    async fn ensure_ready(&self, inner: &mut LaneState, initial_tools: &[ToolSpec]) -> Result {
         if self.config.tool_mode == AgyToolMode::Hrn && inner.bridge.is_none() {
             let bridge = Arc::new(McpBridge::start(self.bridge_options).await?);
             bridge.set_tools(initial_tools.to_vec());
@@ -329,7 +385,7 @@ impl AgyAcpRuntime {
     )]
     async fn prepare_turn(
         &self,
-        inner: &mut RuntimeInner,
+        inner: &mut LaneState,
         client: &AcpClient,
         bridge: Option<&McpBridge>,
         hrn_sid: &str,
@@ -498,7 +554,7 @@ impl AgyAcpRuntime {
     reason = "finalizing a turn updates runtime maps, client subscriptions, and bridge state"
 )]
 async fn finalize_turn_step(
-    guard: &mut RuntimeInner,
+    guard: &mut LaneState,
     client: &AcpClient,
     bridge: Option<&McpBridge>,
     hrn_sid: String,
@@ -514,7 +570,7 @@ async fn finalize_turn_step(
             tool_calls,
         }) => {
             turn.expected_call_ids = tool_calls.iter().map(|tc| tc.id.clone()).collect();
-            guard.active_turns.insert(hrn_sid, turn);
+            guard.active_turn = Some((hrn_sid, turn));
             Ok(LlmResponse {
                 model_used: model_id.to_owned(),
                 fallback_from: None,

@@ -134,6 +134,11 @@ impl SessionMap {
         self.entries.is_empty()
     }
 
+    /// Whether `hrn_session_id` has an active synchronized ACP session in this map.
+    pub fn contains(&self, hrn_session_id: &str) -> bool {
+        self.active.contains_key(hrn_session_id)
+    }
+
     /// Determine how to route `messages` for `hrn_session_id`.
     pub fn route(&self, hrn_session_id: &str, messages: &[Msg]) -> RouteDecision {
         // Case 2: active session is an exact prefix of the incoming message slice.
