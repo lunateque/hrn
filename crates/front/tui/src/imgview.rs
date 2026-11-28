@@ -41,6 +41,23 @@ impl ImageTray {
         !self.pending.is_empty()
     }
 
+    pub(crate) fn has_registered(&self) -> bool {
+        !self.registered.is_empty()
+    }
+
+    /// Reconcile staged pending IDs with the current editor text so deleting an `[Image #N]`
+    /// placeholder removes it from `pending` (and undoing/recalling a draft restores it).
+    pub(crate) fn sync_pending_with_text(&mut self, text: &str) {
+        if self.registered.is_empty() {
+            self.pending.clear();
+            return;
+        }
+        self.pending = extract_image_refs(text)
+            .into_iter()
+            .filter(|&id| self.get(id).is_some())
+            .collect();
+    }
+
     pub(crate) fn register(&mut self, img: ImageAttachment) -> usize {
         self.registered.push(img);
         self.registered.len()
@@ -69,13 +86,14 @@ impl ImageTray {
             .collect()
     }
 
-    /// Drain staged images and resolve any `@path/to/img.png` or explicit `[Image #N]` references
-    /// in `prompt`, returning `(Some(id), attachment)` pairs in order.
+    /// Drain staged images still referenced in `prompt` and resolve any `@path/to/img.png` or
+    /// explicit `[Image #N]` references, returning `(Some(id), attachment)` pairs in order.
     pub(crate) fn take_for_prompt(
         &mut self,
         prompt: &str,
         cwd: &Path,
     ) -> Vec<(Option<usize>, ImageAttachment)> {
+        self.sync_pending_with_text(prompt);
         let mut ids: Vec<usize> = std::mem::take(&mut self.pending);
         let mut seen: HashSet<usize> = ids.iter().copied().collect();
 
@@ -85,11 +103,6 @@ impl ImageTray {
                 if seen.insert(id) {
                     ids.push(id);
                 }
-            }
-        }
-        for id in extract_image_refs(prompt) {
-            if self.get(id).is_some() && seen.insert(id) {
-                ids.push(id);
             }
         }
         ids.into_iter()
@@ -537,5 +550,35 @@ mod tests {
         let previews = tray.resolve_assistant_previews("На фото №1 видна кнопка.", Path::new("."));
         assert_eq!(previews.len(), 1);
         assert_eq!(previews[0].0, Some(1));
+    }
+
+    #[test]
+    fn sync_pending_drops_deleted_placeholder_and_restores_on_reappear() {
+        let mut tray = ImageTray::default();
+        assert_eq!(tray.stage(sample_png()), 1);
+        assert_eq!(tray.stage(sample_png()), 2);
+        assert_eq!(
+            tray.pending_labels(),
+            vec!["[Image #1] demo.png", "[Image #2] demo.png"]
+        );
+
+        tray.sync_pending_with_text("[Image #2] Хочу что то типо такого");
+        assert_eq!(tray.pending_labels(), vec!["[Image #2] demo.png"]);
+
+        tray.sync_pending_with_text("plain text without image");
+        assert!(!tray.has_pending());
+        assert!(tray.pending_labels().is_empty());
+
+        tray.sync_pending_with_text("[Image #2] and [Image #1] and [Image #99]");
+        assert_eq!(
+            tray.pending_labels(),
+            vec!["[Image #2] demo.png", "[Image #1] demo.png"]
+        );
+
+        let attached = tray.take_for_prompt("[Image #2] only second", Path::new("."));
+        assert_eq!(attached.len(), 1);
+        assert_eq!(attached[0].0, Some(2));
+        assert!(!tray.has_pending());
+        assert!(tray.get(1).is_some());
     }
 }

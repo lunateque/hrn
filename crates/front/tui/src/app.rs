@@ -358,6 +358,14 @@ impl App {
             Message::Git(..) => {}
         }
         self.deliver_inbox();
+        self.sync_pending_images();
+    }
+
+    /// Keep `self.images.pending` aligned with the `[Image #N]` tokens currently in the editor.
+    pub(super) fn sync_pending_images(&mut self) {
+        if self.images.has_registered() {
+            self.images.sync_pending_with_text(&self.editor.text());
+        }
     }
 
     /// Probe the working tree now and after every task through `tx`.

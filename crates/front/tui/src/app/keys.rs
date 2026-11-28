@@ -77,6 +77,7 @@ impl App {
                     // of keys: an Enter followed by more keys in the same read is a newline.
                     let burst = events.peek().is_some_and(is_press);
                     self.on_key(key, burst);
+                    self.sync_pending_images();
                 }
                 Event::Mouse(ev) if matches!(ev.kind, MouseEventKind::Down(MouseButton::Left)) => {
                     self.on_mouse_click(ev.row);
@@ -108,6 +109,7 @@ impl App {
                             self.vim.paste_text_raw(&mut self.editor, &text);
                         }
                     }
+                    self.sync_pending_images();
                 }
                 _ => {}
             }
@@ -539,6 +541,7 @@ impl App {
 
     /// Send the input: a slash command (built-in or custom), a steer while a turn runs, or a new turn.
     pub(super) fn submit(&mut self) {
+        self.sync_pending_images();
         let raw = self.editor.text();
         if raw.trim().is_empty() && !self.images.has_pending() {
             return;
