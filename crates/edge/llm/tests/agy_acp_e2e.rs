@@ -165,7 +165,7 @@ async fn e2e_parallel_tool_roundtrip_and_permission_isolation() -> TestResult {
     let resp2 = runtime
         .stream_chat("gemini-3.8-flash", &req, &cancel, &sink, None)
         .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::ResumeToolCall));
+    assert_eq!(runtime.last_route(), Some(RouteKind::ResumeToolCall));
     assert_eq!(resp2.finish_reason, FinishReason::Stop);
     assert!(resp2.content.contains("ALPHA"));
     assert!(resp2.content.contains("BETA"));
@@ -235,7 +235,7 @@ async fn e2e_linear_branch_resume_rewind_direct_and_smart_handoff() -> TestResul
         Some(&summarizer),
     )
     .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::BootstrapDirect));
+    assert_eq!(runtime.last_route(), Some(RouteKind::BootstrapDirect));
     branch_a.push(Msg::assistant(r1));
 
     // Turn 2 (Linear continuation on Branch A + model/effort change).
@@ -249,7 +249,7 @@ async fn e2e_linear_branch_resume_rewind_direct_and_smart_handoff() -> TestResul
         Some(&summarizer),
     )
     .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::Linear));
+    assert_eq!(runtime.last_route(), Some(RouteKind::Linear));
     assert!(r2.contains("delta A2") && !r2.contains("hello A"));
     branch_a.push(Msg::assistant(r2));
 
@@ -268,7 +268,7 @@ async fn e2e_linear_branch_resume_rewind_direct_and_smart_handoff() -> TestResul
         Some(&summarizer),
     )
     .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::BootstrapDirect));
+    assert_eq!(runtime.last_route(), Some(RouteKind::BootstrapDirect));
     assert!(r3.contains("<restored_branch_context>"));
 
     // Turn 4 (Return to Branch A -> ResumeBranch via session/resume!).
@@ -282,7 +282,7 @@ async fn e2e_linear_branch_resume_rewind_direct_and_smart_handoff() -> TestResul
         Some(&summarizer),
     )
     .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::ResumeBranch));
+    assert_eq!(runtime.last_route(), Some(RouteKind::ResumeBranch));
     assert!(r4.contains("back on A"));
 
     // Turn 5 (Rewind with large history > 120 tokens -> SmartHandoff using `smol`).
@@ -300,7 +300,7 @@ async fn e2e_linear_branch_resume_rewind_direct_and_smart_handoff() -> TestResul
         Some(&summarizer),
     )
     .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::SmartHandoff));
+    assert_eq!(runtime.last_route(), Some(RouteKind::SmartHandoff));
     assert!(r5.contains("DENSE_SMART_CHECKPOINT"));
     let used_models = summarizer
         .0
@@ -360,7 +360,7 @@ async fn e2e_native_fork_capability_gate() -> TestResult {
             None,
         )
         .await?;
-    assert_eq!(runtime.last_route().await, Some(RouteKind::NativeFork));
+    assert_eq!(runtime.last_route(), Some(RouteKind::NativeFork));
     let transcript = std::fs::read_to_string(&log)?;
     assert!(transcript.contains("METHOD:session/fork"));
 
@@ -510,4 +510,109 @@ fn empty_request() -> LlmRequest {
         session_id: None,
         service_tier: None,
     }
+}
+
+/// Answer `resp`'s bridged calls with `<label>-ALPHA` / `<label>-BETA` and append them to `req`.
+fn answer_reads(req: &mut LlmRequest, resp: hrn_kernel::LlmResponse, label: &str) {
+    req.messages.push(Msg::assistant_tool_calls(
+        resp.content,
+        None,
+        resp.tool_calls.clone(),
+    ));
+    for tc in &resp.tool_calls {
+        let body = if tc.arguments.contains("a.txt") {
+            format!("{label}-ALPHA")
+        } else {
+            format!("{label}-BETA")
+        };
+        req.messages.push(Msg::tool_result(&tc.id, &tc.name, &body));
+    }
+}
+
+/// Two hrn sessions whose turns overlap (the main agent suspended on a tool call while a
+/// subagent runs) must each get their own bridge: every tool call reaches the session that made
+/// it, and one session finishing does not cut the other off from its tools.
+#[tokio::test]
+async fn e2e_overlapping_sessions_never_share_a_bridge() -> TestResult {
+    let log = unique_path("lanes_log");
+    let agents_root = unique_path("lanes_agents");
+    let runtime = build_runtime(
+        AgyProviderConfig::default(),
+        "tool_roundtrip",
+        &log,
+        agents_root.clone(),
+    )?;
+    let cancel = CancelFlag::new();
+    let sink = VecSink::new();
+    let tools = vec![ToolSpec {
+        name: "read".to_owned(),
+        description: "Read file".to_owned(),
+        parameters: json!({ "type": "object" }),
+    }];
+    let request = |sid: &str| LlmRequest {
+        session_id: Some(sid.to_owned()),
+        messages: vec![Msg::user("read both files")],
+        tools: tools.clone(),
+        thinking: ThinkingLevel::Medium,
+        ..empty_request()
+    };
+    let mut main = request("hrn-main");
+    let mut sub = request("hrn-sub");
+    let step = Duration::from_secs(30);
+
+    let main1 = tokio::time::timeout(
+        step,
+        runtime.stream_chat("gemini-3.8-flash", &main, &cancel, &sink, None),
+    )
+    .await??;
+    assert_eq!(main1.finish_reason, FinishReason::ToolCalls);
+
+    // The main turn is suspended on its tool calls; the subagent must not queue behind it.
+    let sub1 = tokio::time::timeout(
+        step,
+        runtime.stream_chat("gemini-3.8-flash", &sub, &cancel, &sink, None),
+    )
+    .await??;
+    assert_eq!(sub1.finish_reason, FinishReason::ToolCalls);
+    let ids = |r: &hrn_kernel::LlmResponse| -> Vec<String> {
+        r.tool_calls.iter().map(|tc| tc.id.clone()).collect()
+    };
+    let (main_ids, sub_ids) = (ids(&main1), ids(&sub1));
+    assert!(
+        main_ids.iter().all(|id| !sub_ids.contains(id)),
+        "bridged call ids collide across sessions: {main_ids:?} vs {sub_ids:?}"
+    );
+
+    answer_reads(&mut main, main1, "MAIN");
+    answer_reads(&mut sub, sub1, "SUB");
+
+    // The subagent finishes first: that used to detach the shared sink under the main turn.
+    let sub2 = tokio::time::timeout(
+        step,
+        runtime.stream_chat("gemini-3.8-flash", &sub, &cancel, &sink, None),
+    )
+    .await??;
+    assert_eq!(sub2.finish_reason, FinishReason::Stop);
+    assert!(
+        sub2.content.contains("SUB-ALPHA+SUB-BETA"),
+        "{}",
+        sub2.content
+    );
+
+    let main2 = tokio::time::timeout(
+        step,
+        runtime.stream_chat("gemini-3.8-flash", &main, &cancel, &sink, None),
+    )
+    .await??;
+    assert_eq!(runtime.last_route(), Some(RouteKind::ResumeToolCall));
+    assert_eq!(main2.finish_reason, FinishReason::Stop);
+    assert!(
+        main2.content.contains("MAIN-ALPHA+MAIN-BETA"),
+        "{}",
+        main2.content
+    );
+
+    let _ = std::fs::remove_file(&log);
+    let _ = std::fs::remove_dir_all(&agents_root);
+    Ok(())
 }

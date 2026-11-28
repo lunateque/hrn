@@ -13,6 +13,7 @@ pub mod client;
 pub mod config;
 pub mod discover;
 pub mod handoff;
+mod lanes;
 pub mod login;
 pub mod runtime;
 mod runtime_turn;
