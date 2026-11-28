@@ -1,6 +1,6 @@
 //! Stateful `AgyAcpRuntime` bridging stateless `LlmProvider::stream_chat` onto warm `agy acp`
 //! child processes, loopback Streamable HTTP MCP bridges, ephemeral custom agents, and DAG
-//! session maps. Sessions whose turns overlap run on separate lanes (see [`super::lanes`]).
+//! session maps. Sessions whose turns overlap run on separate lanes (see `lanes.rs`).
 
 use super::agent_profile::{EphemeralAgentProfile, cleanup_stale_agent_dirs};
 use super::binary::{discover_agy_binary, merged_no_proxy_env};
